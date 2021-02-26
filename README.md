@@ -1,2 +1,19 @@
-# mh2021
-Prácticas realizadas en la asignatura Metaheurísticas, curso 2020-2021 para el Grado de Ingeniería Informática en la Universidad de Granada. 
+[:es: Español](#metaheurísticas) | [:gb: English](#metaheuristics)
+
+---
+# Metaheurísticas #
+## :books: Curso 2020-2021, Grado en Ingeniería Informática, ETSIIT UGR.
+### :pushpin: Introducción
+
+### :gear: Compilación
+
+### :link: Contenido
+
+---
+# Metaheuristics #
+## :books: 2020-2021 Course, Computer Science Engineering Degree, ETSIIT UGR.
+### :pushpin: Introduction
+
+### :gear: Compilation
+
+### :link: Contents
