@@ -1,0 +1,3 @@
+# Ignore C++ Build and Executables
+*.o
+*_exe

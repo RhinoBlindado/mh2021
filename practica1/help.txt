@@ -1,0 +1,3 @@
+BUPA:
+
+./COPKM_exe 345 5 16 ./input/bupa_set ./input/bupa_set_const_10.const
