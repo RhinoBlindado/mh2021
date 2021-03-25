@@ -14,6 +14,10 @@
 #include <ctime>
 //  Do the random shuffle
 #include <algorithm> 
+//
+#include <map>
+#include <limits>
+#include <cmath>
 
 using namespace std;
 
@@ -24,6 +28,21 @@ struct triplet
     int x_1;
     int R;
 };
+
+/*
+class centroid
+{
+    int id;
+    vector<float> position;
+    vector<int> instanceList;
+    int infeScore;  
+
+    centroid()
+    {
+
+    }
+};*/
+
 
 
 // FUNCTIONS
@@ -100,54 +119,137 @@ float rWrapper(int i)
     return Randint(0, i);
 }
 
-bool V(<vector<vector<int>> MR, vector<int> C, int x_i, int x_j, int actC)
+int V(vector<vector<int>> MR, vector<int> C, int x_i, int x_j, int actC)
 {
     bool checkR = false;
 
-    // Check Must-Link
-    if (MR[x_i][x_j] == 1 && C[x_i] != actC)
-    {
-        checkR = true;
-    }
+        // Check Must-Link
+        if (MR[x_i][x_j] == 1 && C[x_i] != actC)
+        {
+            checkR = true;
+        }
 
-    // Check Cannot-Link
-    if (MR[x_i][x_j] == -1 && C[x_i] == actC)
-    {
-        checkR = true;
-    }
+        // Check Cannot-Link
+        if (MR[x_i][x_j] == -1 && C[x_i] == actC)
+        {
+            checkR = true;
+        }
 
-    return checkR;
+    return (int)checkR;
 }
 
-int infeasibility(<vector<vector<int>> MR, vector<int> C, int x_i, int x_j, int actC)
+int infeasibility(int instance, int selectedCentroid, vector<int> assignedList, vector<vector<int>> MR)
 {
+    int count = 0;
+    int sizeCentroid = assignedList.size();
 
+    for(int i; i<sizeCentroid; i++)
+    {
+        if(assignedList[i] == selectedCentroid)
+        {
+            count += V(MR, assignedList, instance, i, selectedCentroid);
+        }
+    }
+
+    return count;
 }
 
+int minDistance(vector<vector<float>> X, vector<vector<float>> centroids, vector<int> selectedCentroids, int instance)
+{
+    float maxDist = numeric_limits<float>::max();
+    float actDist, bestDist;
+    int bestCentroid = -1;
+
+    for (int i = 0; i < selectedCentroids.size(); i++)
+    {
+        actDist = 0;
+        for(int j = 0; j < X[0].size(); j++)
+        {
+            actDist += pow(X[instance][j] - centroids[selectedCentroids[i]][j], 2);
+        }
+
+        actDist = sqrt(actDist);
+
+        if(actDist < maxDist)
+        {
+            bestDist = actDist;
+            bestCentroid = selectedCentroids[i];
+        }
+    }
+
+    return bestCentroid;
+}
+
+float updateDistance()
+{
+    
+}
 
 void greed(vector<vector<float>> X, vector<vector<int>> MR, int k, vector<vector<float>> centroids)
 {
-    int instances = X.size()
+    int instances = X.size();
     vector<int> RSI(instances);
         for (int i = 0; i < instances; i++) RSI[i] = i;
 
     vector<int> C (instances, -1);
+    vector<int> C_infe (k, -1);
+    vector<int> C_old;
+
+    vector<int> C_lowest;
+
+    float MAXDIST;
+    int maxInfeas;
 
     //  Shuffle the indexes of the X matrix
     random_shuffle(RSI.begin(), RSI.end(), rWrapper);
 
     do
     {
+        C_old = C;
+
         // Check the infeasibility of asigning i to the cluster j
         for(int i=0; i<instances; i++)
         {
             for(int j=0; j<k; j++)
             {
-                infeasibility()
+               C_infe[j] = infeasibility(RSI[i], j, C, MR);
+            }
+
+            // Assign the centroid with the less feasibility or if equal score, the closest.
+            maxInfeas = numeric_limits<int>::max();
+            for (int j = 0; j < k; i++)
+            {
+                if(C_infe[j] <= maxInfeas)
+                {
+                    if(maxInfeas != C_infe[j])
+                    {
+                        C_lowest.clear();
+                    }
+                    C_lowest.push_back(j);
+                    maxInfeas = C_infe[j];
+                }
+            }
+            
+            if(C_lowest.size() > 1)
+            {
+                int aux = minDistance(X, centroids, C_lowest, i);
+                C[aux] = i;
+            }
+            else
+            {
+                C[C_lowest.front()] = i;
             }
         }
+        C_lowest.clear();
 
-    } while (/* condition */);
+        // Update centroids
+        for (int i = 0; i < k; i++)
+        {
+            /* code */
+        }
+        
+
+    } while (C_old != C);
 }
 
 
