@@ -12,12 +12,14 @@
 #include "libs/random.h"
 //  Use UNIX time to get randomness.
 #include <ctime>
-//  Do the random shuffle
+//  Do the random shuffle.
 #include <algorithm> 
-//
-#include <map>
+//  Get max size of data types.
 #include <limits>
+//  Perform math calculations.
 #include <cmath>
+//  Take the time between executions.
+#include <ctime>
 
 using namespace std;
 
@@ -29,27 +31,7 @@ struct triplet
     int R;
 };
 
-/*
-class centroid
-{
-    int id;
-    vector<float> position;
-    vector<int> instanceList;
-    int infeScore;  
-
-    centroid()
-    {
-
-    }
-};*/
-
-
-
 // FUNCTIONS
-
-/**
- *
- */
 void loadData(string dataSetPath, string dataSetRestrictionsPath, vector<vector<float>> &X, vector<vector<int>> &MR)
 {
     ifstream dataSetFile (dataSetPath);
@@ -123,18 +105,17 @@ int V(vector<vector<int>> MR, vector<int> C, int x_i, int x_j, int actC)
 {
     bool checkR = false;
 
-        // Check Must-Link
-        if (MR[x_i][x_j] == 1 && C[x_i] != actC)
-        {
-            checkR = true;
-        }
+    // Check Must-Link
+    if (MR[x_i][x_j] == 1 && C[x_j] != actC)
+    {
+        checkR = true;
+    }
 
-        // Check Cannot-Link
-        if (MR[x_i][x_j] == -1 && C[x_i] == actC)
-        {
-            checkR = true;
-        }
-
+    // Check Cannot-Link
+    if (MR[x_i][x_j] == -1 && C[x_j] == actC)
+    {
+        checkR = true;
+    }
     return (int)checkR;
 }
 
@@ -157,7 +138,7 @@ int infeasibility(int instance, int selectedCentroid, vector<int> assignedList, 
 int minDistance(vector<vector<float>> X, vector<vector<float>> centroids, vector<int> selectedCentroids, int instance)
 {
     float maxDist = numeric_limits<float>::max();
-    float actDist, bestDist;
+    float actDist;
     int bestCentroid = -1;
 
     for (int i = 0; i < selectedCentroids.size(); i++)
@@ -170,22 +151,52 @@ int minDistance(vector<vector<float>> X, vector<vector<float>> centroids, vector
 
         actDist = sqrt(actDist);
 
+
         if(actDist < maxDist)
         {
-            bestDist = actDist;
+            maxDist = actDist;
             bestCentroid = selectedCentroids[i];
         }
     }
-
     return bestCentroid;
 }
 
-float updateDistance()
+void updateDistance(int actK, vector<vector<float>> &centroids, vector<vector<float>> X, vector<int> C_list)
 {
+    vector<int> actList;
+    int size = C_list.size();
+
+
+    for (int i = 0; i < size; i++)
+    {
+        if(C_list[i] == actK)
+        {
+            actList.push_back(i);
+        }
+    }
+
+    int dimensions = X[0].size();
+    int instances = actList.size();
+
+    float sum;
+
+
     
+    for (int i = 0; i < dimensions; i++)
+    {
+        sum = 0;
+        for(int j = 0; j < instances; j++)
+        {
+            sum += X[actList[j]][i];
+        }
+
+        if(instances > 0)
+            centroids[actK][i] = sum / instances;
+    }
+
 }
 
-void greed(vector<vector<float>> X, vector<vector<int>> MR, int k, vector<vector<float>> centroids)
+vector<int> greed(vector<vector<float>> X, vector<vector<int>> MR, int k, vector<vector<float>> centroids)
 {
     int instances = X.size();
     vector<int> RSI(instances);
@@ -194,10 +205,8 @@ void greed(vector<vector<float>> X, vector<vector<int>> MR, int k, vector<vector
     vector<int> C (instances, -1);
     vector<int> C_infe (k, -1);
     vector<int> C_old;
-
     vector<int> C_lowest;
 
-    float MAXDIST;
     int maxInfeas;
 
     //  Shuffle the indexes of the X matrix
@@ -212,12 +221,12 @@ void greed(vector<vector<float>> X, vector<vector<int>> MR, int k, vector<vector
         {
             for(int j=0; j<k; j++)
             {
-               C_infe[j] = infeasibility(RSI[i], j, C, MR);
+                C_infe[j] = infeasibility(RSI[i], j, C, MR);
             }
 
             // Assign the centroid with the less feasibility or if equal score, the closest.
             maxInfeas = numeric_limits<int>::max();
-            for (int j = 0; j < k; i++)
+            for (int j = 0; j < k; j++)
             {
                 if(C_infe[j] <= maxInfeas)
                 {
@@ -232,12 +241,12 @@ void greed(vector<vector<float>> X, vector<vector<int>> MR, int k, vector<vector
             
             if(C_lowest.size() > 1)
             {
-                int aux = minDistance(X, centroids, C_lowest, i);
-                C[aux] = i;
+                int aux = minDistance(X, centroids, C_lowest, RSI[i]);
+                C[RSI[i]] = aux;
             }
             else
             {
-                C[C_lowest.front()] = i;
+                C[RSI[i]] = C_lowest.front();
             }
         }
         C_lowest.clear();
@@ -245,20 +254,24 @@ void greed(vector<vector<float>> X, vector<vector<int>> MR, int k, vector<vector
         // Update centroids
         for (int i = 0; i < k; i++)
         {
-            /* code */
+            updateDistance(i, centroids, X, C);
         }
-        
 
     } while (C_old != C);
+
+    return C;
 }
 
 
-// 1 2 3 4       5
-// n d k set.dat set_const.const
+// 1 2 3 4       5                6
+// n d k set.dat set_const.const  randomSeed
 int main(int argc, char * argv[])
 {
     // Initializing the seed
     Set_random(time(NULL));
+
+    //  Declare the "stopwatch"
+    clock_t timeBefore, timeAfter;
 
     // Getting data from input
     int numberInstances = stoi(argv[1]),
@@ -288,10 +301,20 @@ int main(int argc, char * argv[])
     loadData(setPath, constPath, X, MR);
 
     // Setup the centroids
-    fillCentroids(centroids);
+    fillCentroids(centroids);  
 
+
+    timeBefore = clock();
+    
     //  Use a greedy approach to the problem
-    greed(X, MR, numClusters, centroids);
+    vector<int> result = greed(X, MR, numClusters, centroids);
 
+    timeAfter = clock();
+
+    for (int i = 0; i < result.size(); i++)
+    {
+//        cout<<result[i]<<endl;
+    }
+    
     return 0;
 }

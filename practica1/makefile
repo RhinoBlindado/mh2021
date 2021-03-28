@@ -11,3 +11,6 @@ COPKM.o : COPKM.cpp
 
 random.o : libs/random.cpp
 	g++ -std=c++17 $(INC) -c $<
+
+clean:
+	rm -f *.o *_exe
