@@ -1,6 +1,0 @@
-BUPA:
-
-./COPKM_exe 345 5 16 ./input/bupa_set.dat ./input/bupa_set_const_10.const
-
-TEST:
-./COPKM_exe 8 2 2 ./input/test_set.dat ./input/test_set_const_x.const

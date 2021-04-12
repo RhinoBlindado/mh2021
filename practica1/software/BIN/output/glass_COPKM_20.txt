@@ -1,0 +1,35 @@
+----------COPKM RESULTS---------
+- Fitness:           0.78558
+- Infeasibility:     508
+- Intra K Distance:  0.413509
+- Time:              10.1706s
+- Seed:              860681
+--------------------------------
+----------COPKM RESULTS---------
+- Fitness:           0.630105
+- Infeasibility:     333
+- Intra K Distance:  0.386209
+- Time:              5.61531s
+- Seed:              980472
+--------------------------------
+----------COPKM RESULTS---------
+- Fitness:           0.679444
+- Infeasibility:     367
+- Intra K Distance:  0.410645
+- Time:              8.63589s
+- Seed:              206894
+--------------------------------
+----------COPKM RESULTS---------
+- Fitness:           0.587111
+- Infeasibility:     218
+- Intra K Distance:  0.427443
+- Time:              8.987s
+- Seed:              954919
+--------------------------------
+----------COPKM RESULTS---------
+- Fitness:           0.658439
+- Infeasibility:     340
+- Intra K Distance:  0.409415
+- Time:              10.1525s
+- Seed:              426969
+--------------------------------

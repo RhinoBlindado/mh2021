@@ -1,0 +1,35 @@
+-----------BL RESULTS-----------
+- Fitness:           0.964562
+- Infeasibility:     21
+- Intra K Distance:  0.791722
+- Time:              0.523334 s
+- Seed:              860681
+--------------------------------
+-----------BL RESULTS-----------
+- Fitness:           0.699385
+- Infeasibility:     11
+- Intra K Distance:  0.60885
+- Time:              0.484641 s
+- Seed:              980472
+--------------------------------
+-----------BL RESULTS-----------
+- Fitness:           0.799529
+- Infeasibility:     12
+- Intra K Distance:  0.700764
+- Time:              0.519734 s
+- Seed:              206894
+--------------------------------
+-----------BL RESULTS-----------
+- Fitness:           0.820387
+- Infeasibility:     7
+- Intra K Distance:  0.762774
+- Time:              0.371592 s
+- Seed:              954919
+--------------------------------
+-----------BL RESULTS-----------
+- Fitness:           0.837456
+- Infeasibility:     10
+- Intra K Distance:  0.755151
+- Time:              0.564981 s
+- Seed:              426969
+--------------------------------
