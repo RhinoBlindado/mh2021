@@ -1,0 +1,5 @@
+Fitness: 0.495019	Infeas: 1364	K Dist: 0.242987	Time: 78.4901	Seed: 860681
+Fitness: 0.525512	Infeas: 1539	K Dist: 0.241144	Time: 68.7008	Seed: 980472
+Fitness: 0.503663	Infeas: 1413	K Dist: 0.242577	Time: 81.7358	Seed: 206894
+Fitness: 0.523062	Infeas: 1513	K Dist: 0.243499	Time: 79.8078	Seed: 161195
+Fitness: 0.524294	Infeas: 1530	K Dist: 0.241589	Time: 77.6195	Seed: 121263

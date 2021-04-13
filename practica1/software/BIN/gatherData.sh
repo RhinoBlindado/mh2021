@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# [CASTELLANO]
+# 
+# Practica 1.b - Algoritmos Greedy y Busqueda Local para PAR
+# Asignatura: Metaheuristicas
+# Autor: Valentino Lugli (Github: @RhinoBlindado)
+# Marzo, Abril 2021
+# 
+# 
+# 
+# [ENGLISH]
+# 
+# Practice 1.b - Greedy and Local Search Algorithms for Clustering with Restrictions
+# Course: Metaheuristics
+# Author: Valentino Lugli (Github: @RhinoBlindado)
+# March, April 2021
+
+
 if [ ! -f "./COPKM_exe" ]; then
     echo " COPKM_exe not found"
 fi
