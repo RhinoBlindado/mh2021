@@ -204,7 +204,7 @@ int rWrapper(int i)
     return Randint(0, i);
 } 
 
-generateInitialPop(vector<vector<int>> &pop, int k)
+void generateInitialPop(vector<vector<int>> &pop, int k)
 {
     for (int i = 0; i < pop.size(); i++)
     {
@@ -213,13 +213,22 @@ generateInitialPop(vector<vector<int>> &pop, int k)
             pop[i][j] = j;
         }
 
-        for(int i = k; i < pop[0].size(); i++)
+        for(int j = k; j < pop[0].size(); j++)
         {
-            pop[i][j] = Randint(0, numClusters-1);
+            pop[i][j] = Randint(0, k-1);
         }
 
+    }
+
+    for (int i = 0; i < pop.size(); i++)
+    {
         random_shuffle(pop[i].begin(), pop[i].end(), rWrapper);
     }
+
+}
+
+void evaluateInitialPop()
+{
     
 }
 
@@ -239,14 +248,14 @@ void AGG_UN(vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int
         for(int i = 0; i < 50; i++) population[i].resize(X.size());
 
 
-    generateInitialPop();
+    generateInitialPop(population, k);
+    evaluateInitialPop();
 
-
-    for (int i = 0; i < 100000; i++)
+/*    for (int i = 0; i < 100000; i++)
     {
-        /* code */
+       
     }
-    
+  */
 }
 
 /**
@@ -353,7 +362,7 @@ int main(int argc, char * argv[])
      */ 
  //   timeBefore = clock();
 
-    vector<int> result = localSearch(X, ML, CL, numClusters, lambda);
+    AGG_UN(X, ML, CL, numClusters, lambda);
 
  //   timeAfter = clock();
 
