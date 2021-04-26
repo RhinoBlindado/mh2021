@@ -42,6 +42,10 @@
 
 using namespace std;
 
+//  GLOBAL VARS
+float   uniformCrossChance = 0.7,
+        staticSegCrossChange = 1;
+
 //  STRUCTS
 /**
  * @brief Small container for the restrictions
@@ -54,6 +58,16 @@ struct triplet
     int x_0;
     int x_1;
     int R;
+};
+
+class cromosome
+{
+    public:
+        vector<int> genes;
+        float fitness;
+        bool hasChanges;
+        vector<int> clusters;
+
 };
 
 // FUNCTIONS
@@ -202,33 +216,284 @@ double genLambda(int n, int dim, vector<vector<float>> X, int rSize)
 int rWrapper(int i)
 {
     return Randint(0, i);
-} 
+}
 
-void generateInitialPop(vector<vector<int>> &pop, int k)
+/**
+ * @brief Calculates the infeasibility of the current solution.
+ * @param S     Vector of the current solution.
+ * @param ML    Vector of MUST-LINK Triplets.
+ * @param CL    Vector of CANNOT-LINK Triplets.
+ * @return  The count of how many times a restrictions has been violated.
+ */
+int infeasibility(vector<int> S, vector<triplet> ML, vector<triplet> CL)
+{
+    int count = 0;
+    int mlSize = ML.size(),
+        clSize = CL.size();
+
+    // Checking MUST-LINK restrictions.
+    for(int i = 0; i < mlSize; i++)
+    {
+        // If x_0 and x_1 belong to different clusters, ML is violated.
+        if(S[ML[i].x_0] != S[ML[i].x_1])
+        {
+            count++;
+        }
+    }
+
+    // Checking CANNOT-LINK restrictions.
+    for(int i = 0; i < clSize; i++)
+    {
+        // If x_0 and x_1 belong to the same cluster, CL is violated.
+        if(S[CL[i].x_0] == S[CL[i].x_1])
+        {
+            count++;
+        }
+
+    }
+
+    return count;
+}
+
+/**
+ * @brief Calculate the instances associated with a centroid given the current solution.
+ * @param actInst   The vecto f actual instances associated with the centroid to be filled.
+ * @param X         Array that contains n instances with their d dimensions. 
+ * @param actK      The current centroid/cluster
+ * @param S         Vector that contains the actual solution
+ */
+void calcInstances(vector<int> &actInst, vector<vector<float>> X, int actK, vector<int> S)
+{
+    vector<int> actList;
+    int size = S.size();
+
+    for (int i = 0; i < size; i++)
+    {
+        if(S[i] == actK)
+        {
+            actInst.push_back(i);
+        }
+    }
+
+}
+
+/**
+ * @brief Calculate the coordinates of a centroid given the list of instances associated with it.
+ * @param actCoord  The centroid coordinates to be calculated.
+ * @param actInst   The actual instances associated with the centroid.
+ * @param X         Array that contains n instances with their d dimensions. 
+ */
+void calcCentroidCoords(vector<float> &actCoord, vector<int> &actInst, vector<vector<float>> X)
+{
+    int dimensions = X[0].size();
+    int instances = actInst.size();
+
+    float sum;
+    
+    for (int i = 0; i < dimensions; i++)
+    {
+        sum = 0;
+
+        for(int j = 0; j < instances; j++)
+        {
+            sum += X[actInst[j]][i];
+        }
+
+        actCoord[i] = sum / instances;
+    }
+
+}
+
+/**
+ * @brief Get the average intracluster distance of a certain cluster.
+ * @param actCoord  The actual centroid coordinates.
+ * @param actInst   The actual instances associated with the centroid.
+ * @param X         Array that contains n instances with their d dimensions. 
+ * @return Average intracluster distane of a certain cluster.
+ */
+double calcIntraDiff(vector<float> actCoord, vector<int> actInst, vector<vector<float>> X)
+{
+    double sum = 0;
+    double actDist;
+
+    int dimensions = X[0].size();
+    int instances = actInst.size();
+
+    for(int i = 0; i < instances; i++)
+    {
+        actDist = 0;
+        for(int j = 0; j < dimensions; j++)
+        {
+            actDist += pow(X[actInst[i]][j] - actCoord[j], 2);
+        }
+        actDist = sqrt(actDist);
+        sum += actDist;
+    }
+
+    return sum / instances;
+}
+
+/**
+ * @brief Get the average intracluster distance of the current solution.
+ * @param S         Vector that contains the actual solution
+ * @param X         Array that contains n instances with their d dimensions. 
+ * @param k         Number of Centroids.
+ * @return Average intracluster distance of the current solution.
+ */
+double intraClusterDistance(vector<int> S, vector<vector<float>> X, int k)
+{
+    vector<int> actInstance;
+    vector<float> actCoords (X[0].size(), 0);
+    double  actDiff,
+            totalDiff = 0;
+
+    for (int i = 0; i < k; i++)
+    {
+        actInstance.clear();
+        calcInstances(actInstance, X, i, S);
+        calcCentroidCoords(actCoords, actInstance, X);
+        actDiff = calcIntraDiff(actCoords, actInstance, X);
+        totalDiff += actDiff;
+    }
+
+    return totalDiff / k;
+}
+
+/**
+ * @brief Get the fitness of the solution
+ * @param S         Vector that contains the a solution
+ * @param X         Array that contains n instances with their d dimensions.
+ * @param ML        Vector of MUST-LINK triplets.
+ * @param CL        Vector of CANNOT-LINK triplets.
+ * @param lambda    Value to be used for computing the fitness value.
+ * @param k         Number of Centroids.
+ * @return Value of the fitness obtained  
+ */
+double getFitness(vector<int> S, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, double lambda, int k)
+{
+    return intraClusterDistance(S, X, k) + (lambda * infeasibility(S, ML, CL));
+}
+
+void generateInitialPop(vector<cromosome> &pop, int k)
 {
     for (int i = 0; i < pop.size(); i++)
     {
         for (int j = 0; j < k; j++)
         {
-            pop[i][j] = j;
+            pop[i].genes[j] = j;
+            pop[i].clusters[j]++;
         }
 
-        for(int j = k; j < pop[0].size(); j++)
+        for(int j = k; j < pop[0].genes.size(); j++)
         {
-            pop[i][j] = Randint(0, k-1);
+            pop[i].genes[j] = Randint(0, k-1);
+            pop[i].clusters[pop[i].genes[j]]++;
         }
 
     }
 
     for (int i = 0; i < pop.size(); i++)
     {
-        random_shuffle(pop[i].begin(), pop[i].end(), rWrapper);
+        random_shuffle(pop[i].genes.begin(), pop[i].genes.end(), rWrapper);
     }
 
 }
 
-void evaluateInitialPop()
+void evaluateInitialPop(vector<cromosome> &pop, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, double lambda, int k, pair<int, float> &bestCrom)
 {
+    for (int i = 0; i < pop.size(); i++)
+    {
+        pop[i].fitness = getFitness(pop[i].genes, X, ML, CL, lambda, k);
+        
+        if(pop[i].fitness < bestCrom.second)
+        {
+            bestCrom.first = i;
+            bestCrom.second = pop[i].fitness;
+        }
+    }
+    
+}
+
+void popSelection(vector<cromosome> pop, vector<cromosome> &parentPop)
+{
+    int fighterA,
+        fighterB;
+
+    for (int i = 0; i < pop.size(); i++)
+    {
+        fighterA = Randint(0, (pop.size()-1) );
+        fighterB = Randint(0, (pop.size()-1) );
+
+        if(pop[fighterA].fitness < pop[fighterB].fitness)
+        {
+            parentPop[i] = pop[fighterA];
+        }
+        else
+        {
+            parentPop[i] = pop[fighterB];
+        }
+
+    }
+}
+
+void popCrossUniform(vector<cromosome> &parentPop)
+{
+    vector<int> childA, 
+                childB;
+
+    int crossNum = (int)ceil(parentPop.size() * uniformCrossChance),
+        geneChanges = (int)(parentPop[0].genes.size() / 2),
+        geneSize = parentPop[0].genes.size() - 1,
+        crossA,
+        crossB;
+
+    pair<int, int>  changeA, 
+                    changeB;
+
+    for (int i = 0; i < crossNum; i += 2)
+    {
+        childA = parentPop[i].genes;
+        childB = childA;
+
+        for (int j = 0; j < geneChanges; j++)
+        {
+            do
+            {
+                crossA = Randint(0, geneSize);
+            }while(parentPop[i].clusters[ childA[crossA] ] > 1);
+
+            do
+            {
+                crossB = Randint(0, geneSize);
+            }while(parentPop[i].clusters[ childB[crossB] ] > 1);
+
+            changeA.first = childA[crossA];
+            changeA.second = parentPop[i+1].genes[crossA];
+
+            changeB.first = childB[crossB];
+            changeB.second = parentPop[i+1].genes[crossB];
+
+            childA[crossA] = parentPop[i+1].genes[crossA];
+            childB[crossB] = parentPop[i+1].genes[crossB];
+        }
+
+        parentPop[i].genes = childA;
+        parentPop[i].hasChanges = true;
+        parentPop[i].clusters[ changeA.first ]--;
+        parentPop[i].clusters[ changeA.second ]++;
+
+        parentPop[i+1].genes = childB;
+        parentPop[i+1].hasChanges = true;
+        parentPop[i+1].clusters[ changeB.first ]--;
+        parentPop[i+1].clusters[ changeB.second ]++;
+    }
+}
+
+void popMutation(vector<cromosome> &parentPop)
+{
+    int tVirus = Randint(0, parentPop[0].genes[0].size() - 1 ), 
+        wesker = Randint(0, parentPop.size() - 1);
+
     
 }
 
@@ -240,23 +505,53 @@ void evaluateInitialPop()
  * @param CL        Vector of CANNOT-LINK triplets.
  * @param k         Number of Centroids.    
  */
-void AGG_UN(vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int k, double lambda)
+void AGG_UN(vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int k, double lambda, int popSize, bool operatorType)
 {
 
-    vector<vector<int>> population;
-        population.resize(50);
-        for(int i = 0; i < 50; i++) population[i].resize(X.size());
+    /*vector<vector<int>> population, parentPop;
+        population.resize(popSize);
+        for(int i = 0; i < popSize; i++) population[i].resize(X.size());  
+        parentPop.resize(popSize);
 
+    vector<float> popFitness (popSize, -1);
+    vector<bool> needEval (popSize, true);*/
+
+    vector<cromosome> population, parentPop, childPop;
+    population.resize(popSize);
+    parentPop.resize(popSize);
+    
+    for(int i = 0; i < popSize; i++) 
+    {
+        population[i].genes.resize(X.size());
+        population[i].fitness = -1;
+        population[i].hasChanges = false;
+        population[i].clusters.resize(k);
+    }
+
+    pair<int, float> bestCrom(-1, numeric_limits<float>::max());
 
     generateInitialPop(population, k);
-    evaluateInitialPop();
+    evaluateInitialPop(population, X, ML, CL, lambda, k, bestCrom);
 
-/*    for (int i = 0; i < 100000; i++)
-    {
-       
-    }
-  */
+//    for (int i = 0; i < 100000; i++)
+//    {
+        popSelection(population, parentPop);
+        popCrossUniform(parentPop);
+        popMutation(parentPop);
+//    }
 }
+
+/*        cout<<"OG POP:"<<endl;
+        for (int i = 0; i < population.size(); i++)
+        {
+            for (int j = 0; j < population[0].genes.size(); j++)
+            {
+                cout<<population[i].genes[j]<<" ";
+            }
+            cout<<endl;
+            
+        }
+*/
 
 /**
  * @brief 
@@ -326,7 +621,8 @@ int main(int argc, char * argv[])
     // Getting data from input
     int numberInstances = stoi(argv[1]),
         dimensions = stoi(argv[2]),
-        numClusters = stoi(argv[3]);
+        numClusters = stoi(argv[3]),
+        populationSize = 50;
 
     string setPath = argv[4],
             constPath = argv[5];
@@ -362,7 +658,7 @@ int main(int argc, char * argv[])
      */ 
  //   timeBefore = clock();
 
-    AGG_UN(X, ML, CL, numClusters, lambda);
+    AGG_UN(X, ML, CL, numClusters, lambda, populationSize, true);
 
  //   timeAfter = clock();
 
