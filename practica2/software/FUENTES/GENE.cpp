@@ -43,8 +43,9 @@
 using namespace std;
 
 //  GLOBAL VARS
-float   uniformCrossChance = 0.7,
-        staticSegCrossChange = 1;
+const float uniformCrossChance = 0.7,
+            staticSegCrossChance = 1,
+            mutationChance = 0.001;
 
 //  STRUCTS
 /**
@@ -68,6 +69,36 @@ class cromosome
         bool hasChanges;
         vector<int> clusters;
 
+    void printContents()
+    {
+        cout<<"---/Cromosome/---"<<endl;
+        cout<<"\tGenes: [";
+        for (int i = 0; i < genes.size(); i++)
+        {
+            cout<<genes[i]<<" ";
+        }
+        cout<<"]"<<endl;
+
+        cout<<"\tFitness: "<<fitness<<endl;
+        cout<<"\tHas changes? "<<hasChanges<<endl;
+        cout<<"\tCluster count: [";
+
+        for (int i = 0; i < clusters.size(); i++)
+        {
+            cout<<clusters[i]<<" ";
+        }
+        cout<<"]"<<endl;
+        cout<<"---/Cromosome End/---"<<endl;
+    }
+
+};
+
+struct bestCromosome
+{
+    int pos;
+    float fitness;
+    bool isAlive;
+    cromosome data;
 };
 
 // FUNCTIONS
@@ -399,25 +430,37 @@ void generateInitialPop(vector<cromosome> &pop, int k)
 
 }
 
-void evaluateInitialPop(vector<cromosome> &pop, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, double lambda, int k, pair<int, float> &bestCrom)
+void evaluatePop(vector<cromosome> &pop, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, double lambda, int k, bestCromosome &bestCrom)
 {
+
+    bestCrom.pos = -1;
+    bestCrom.fitness = numeric_limits<float>::max();
+    bestCrom.isAlive = true;
+
     for (int i = 0; i < pop.size(); i++)
     {
-        pop[i].fitness = getFitness(pop[i].genes, X, ML, CL, lambda, k);
-        
-        if(pop[i].fitness < bestCrom.second)
+        if (pop[i].hasChanges)
         {
-            bestCrom.first = i;
-            bestCrom.second = pop[i].fitness;
+            pop[i].fitness = getFitness(pop[i].genes, X, ML, CL, lambda, k);
+            pop[i].hasChanges = false;
+        }
+        
+        if(pop[i].fitness < bestCrom.fitness)
+        {
+            bestCrom.pos = i;
+            bestCrom.fitness = pop[i].fitness;
         }
     }
-    
+
+    bestCrom.data = pop[ bestCrom.pos ];
 }
 
-void popSelection(vector<cromosome> pop, vector<cromosome> &parentPop)
+void popSelection(vector<cromosome> pop, vector<cromosome> &parentPop, bestCromosome &bestCrom)
 {
     int fighterA,
         fighterB;
+
+    bestCrom.isAlive = false;
 
     for (int i = 0; i < pop.size(); i++)
     {
@@ -427,16 +470,28 @@ void popSelection(vector<cromosome> pop, vector<cromosome> &parentPop)
         if(pop[fighterA].fitness < pop[fighterB].fitness)
         {
             parentPop[i] = pop[fighterA];
+
+            if(fighterA == bestCrom.pos)
+            {
+                bestCrom.pos = i;
+                bestCrom.isAlive = true;
+            }
         }
         else
         {
             parentPop[i] = pop[fighterB];
+
+            if(fighterB == bestCrom.pos)
+            {
+                bestCrom.pos = i;
+                bestCrom.isAlive = true;
+            }
         }
 
     }
 }
 
-void popCrossUniform(vector<cromosome> &parentPop)
+void popCrossUniform(vector<cromosome> &parentPop, bestCromosome &bestCrom)
 {
     vector<int> childA, 
                 childB;
@@ -450,22 +505,29 @@ void popCrossUniform(vector<cromosome> &parentPop)
     pair<int, int>  changeA, 
                     changeB;
 
+    if (bestCrom.isAlive && bestCrom.pos < crossNum)
+    {
+        bestCrom.isAlive = false;
+    }
+    
+
     for (int i = 0; i < crossNum; i += 2)
     {
         childA = parentPop[i].genes;
         childB = childA;
 
         for (int j = 0; j < geneChanges; j++)
-        {
+        {            
             do
             {
                 crossA = Randint(0, geneSize);
-            }while(parentPop[i].clusters[ childA[crossA] ] > 1);
+
+            }while(parentPop[i].clusters[ childA[crossA] ] == 1);
 
             do
             {
                 crossB = Randint(0, geneSize);
-            }while(parentPop[i].clusters[ childB[crossB] ] > 1);
+            }while(parentPop[i].clusters[ childB[crossB] ] == 1);
 
             changeA.first = childA[crossA];
             changeA.second = parentPop[i+1].genes[crossA];
@@ -489,14 +551,55 @@ void popCrossUniform(vector<cromosome> &parentPop)
     }
 }
 
-void popMutation(vector<cromosome> &parentPop)
+void popMutation(vector<cromosome> &parentPop, bestCromosome bestCrom)
 {
-    int tVirus = Randint(0, parentPop[0].genes[0].size() - 1 ), 
-        wesker = Randint(0, parentPop.size() - 1);
+    int mutatedCroms = (int)ceil(mutationChance * parentPop.size() * parentPop[0].genes.size()),
+        wesker = Randint(0, (parentPop.size() - mutatedCroms - 1)),
+        clusterSize = parentPop[0].clusters.size() - 1,
+        geneSize = parentPop[0].genes.size() - 1,
+        mutationPos,
+        tVirus;
 
+
+    if(bestCrom.isAlive && (bestCrom.pos >= wesker && bestCrom.pos < wesker + mutatedCroms))
+    {
+        bestCrom.isAlive = false;
+    }
+
+    for (int i = 0; i < mutatedCroms; i++)
+    {
+        do
+        {
+            mutationPos = Randint(0, geneSize);
+        }while(parentPop[i + wesker].clusters[ parentPop[i + wesker].genes[mutationPos] ] == 1 );
+
+        do
+        {
+            tVirus = Randint(0, clusterSize);
+        }while(parentPop[i + wesker].genes[mutationPos] == tVirus);
+
+        parentPop[i + wesker].hasChanges = true;
+        parentPop[i + wesker].clusters[tVirus]++;
+        parentPop[i + wesker].clusters[ parentPop[i + wesker].genes[mutationPos] ]--;
+        parentPop[i + wesker].genes[mutationPos] = tVirus;
+    }
     
 }
 
+void replacePop(vector<cromosome> &childPop, vector<cromosome> parentPop, bestCromosome bestCrom)
+{
+
+    for (int i = 0; i < parentPop.size(); i++)
+    {
+        childPop[i] = parentPop[i];        
+    }
+
+    if (!bestCrom.isAlive)
+    {
+        childPop[0] = bestCrom.data;
+    }
+        
+}
 
 /**
  * @brief 
@@ -524,20 +627,56 @@ void AGG_UN(vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int
     {
         population[i].genes.resize(X.size());
         population[i].fitness = -1;
-        population[i].hasChanges = false;
+        population[i].hasChanges = true;
         population[i].clusters.resize(k);
     }
 
-    pair<int, float> bestCrom(-1, numeric_limits<float>::max());
-
+    bestCromosome bestCrom;
     generateInitialPop(population, k);
-    evaluateInitialPop(population, X, ML, CL, lambda, k, bestCrom);
+    evaluatePop(population, X, ML, CL, lambda, k, bestCrom);
 
 //    for (int i = 0; i < 100000; i++)
 //    {
-        popSelection(population, parentPop);
-        popCrossUniform(parentPop);
-        popMutation(parentPop);
+        cout<<"Init pop"<<endl;
+        for (int i = 0; i < population.size(); i++)
+        {
+            cout<<"["<<i<<"]";
+            population[i].printContents();
+        }
+        cout<<"BEST CROM= "<<bestCrom.pos<<" Fit="<<bestCrom.fitness<<endl;
+        popSelection(population, parentPop, bestCrom);
+        cout<<"Pop selection done."<<endl;
+        for (int i = 0; i < population.size(); i++)
+        {
+            cout<<"["<<i<<"]";
+            parentPop[i].printContents();
+        }
+        cout<<"BEST CROM= "<<bestCrom.pos<<" Fit="<<bestCrom.fitness<<" Is alive? "<<bestCrom.isAlive<<endl;
+        popCrossUniform(parentPop, bestCrom);
+        cout<<"Pop cross done."<<endl;
+        for (int i = 0; i < population.size(); i++)
+        {
+            cout<<"["<<i<<"]";
+            parentPop[i].printContents();
+        }
+        cout<<"BEST CROM= "<<bestCrom.pos<<" Fit="<<bestCrom.fitness<<" Is alive? "<<bestCrom.isAlive<<endl;
+        popMutation(parentPop, bestCrom);
+        cout<<"Pop mutation done."<<endl;
+        for (int i = 0; i < population.size(); i++)
+        {
+            cout<<"["<<i<<"]";
+            parentPop[i].printContents();
+        }
+        cout<<"BEST CROM= "<<bestCrom.pos<<" Fit="<<bestCrom.fitness<<" Is alive? "<<bestCrom.isAlive<<endl;
+        replacePop(population, parentPop, bestCrom);
+        cout<<"Pop replacement done."<<endl;
+        evaluatePop(population, X, ML, CL, lambda, k, bestCrom);
+
+        for (int i = 0; i < population.size(); i++)
+        {
+            population[i].printContents();
+        }
+        
 //    }
 }
 
