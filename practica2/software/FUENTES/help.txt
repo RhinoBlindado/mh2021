@@ -1,1 +1,0 @@
-./GENE_exe 345 5 16 ../BIN/input/bupa_set.dat ./BIN/input/bupa_set_const_10.const 860681 
