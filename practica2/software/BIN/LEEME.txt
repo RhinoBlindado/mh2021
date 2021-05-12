@@ -1,7 +1,7 @@
 /*** ARCHIVOS ***/
-input           - Contiene los datos del problema, es decir, los ficheros *.set y *.const
-output          - Contiene los datos de salida, esto es solo requerido si se hace uso del script gatherData.sh
-BL_exe          - Programa ejecutable que implementa el Algoritmo de Búsqueda Local
-COPKM_EXE       - Programa ejecutable que implementa el Algoritmo Greedy COPKM
-gatherData.sh   - Script utilizado para realizar las 30 ejecuciones requeridas, los resultados los almacena en output.
-seeds.txt       - Fichero que contiene las semillas utilizadas
+input               - Contiene los datos del problema, es decir, los ficheros *.set y *.const
+output              - Contiene los datos de salida, esto es solo requerido si se hace uso del script gatherData.sh
+GENE_exe            - Programa ejecutable que implementa los Algoritmos Genéticos
+MEME_exe            - Programa ejecutable que implementa los Algoritmos Meméticos
+gatherData_P2.sh    - Script utilizado para realizar las ejecuciones requeridas, los resultados los almacenan en output
+seeds.txt           - Fichero que contiene las semillas utilizadas

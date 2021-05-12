@@ -1,1 +1,1121 @@
- 
+// INTRODUCTION
+
+/**
+ *  [CASTELLANO]
+ * 
+ * Practica 2.b - Técnicas de Búsqueda basadas en Poblaciones para el Problema del Agrupamiento con Restricciones
+ * Asignatura: Metaheuristicas
+ * Autor: Valentino Lugli (Github: @RhinoBlindado)
+ * Fecha: Abril, Mayo 2021
+ */
+
+/**
+ *  [ENGLISH]
+ *
+ * Practice 2.b - Population-based search techniques for the Clustering Problem with Restrictions
+ * Course: Metaheuristics
+ * Author: Valentino Lugli (Github: @RhinoBlindado)
+ * Fecha: April, May 2021
+ */
+
+// LIBRARIES
+//  I/O.
+#include <iostream>
+//  Vectors.
+#include <vector>   
+//  Open files.
+#include <fstream>
+//  Use StringSteam to parse data.  
+#include <sstream>
+//  Take the time between executions.
+#include <ctime>
+//  Do the random shuffle.
+#include <algorithm> 
+//  Get max size of data types.
+#include <limits>
+//  Perform math calculations.
+#include <cmath>
+//  Use the Pair class
+#include <utility>
+//  Randomness.
+#include "libs/random.h"
+//  List.
+#include <list>
+
+using namespace std;
+
+//  GLOBAL VARS
+const float generationalCrossChance = 0.7,
+            stationaryCrossChance = 1,
+            mutationChance = 0.1;
+
+class cromosome
+{
+    private:
+    vector<int> genes;
+    float fitness;
+    bool hasChanges;
+    vector<int> clusters;
+
+    public:
+
+    //  Constructors
+    cromosome()
+    {
+        this->fitness = -1;
+        this->hasChanges = true;
+    }
+
+    cromosome(vector<int> arg_genes, float arg_fitness, bool arg_hasChanges, vector<int> arg_clusters)
+    {
+        this->genes = arg_genes;
+        this->fitness = arg_fitness;
+        this->hasChanges = arg_hasChanges;
+        this->clusters = arg_clusters;
+    }
+
+    // Destructor
+    ~cromosome()
+    {
+        this->genes.clear();
+        this->clusters.clear();
+    }
+
+    // Getters
+    vector<int> getGenes() const
+    {
+        return this->genes;
+    }
+
+    int getGeneSize() const
+    {
+        return this->genes.size();
+    }
+
+    int getGeneCluster(const int arg_gene) const
+    {
+        return this->genes[arg_gene];
+    }
+
+    float getFitness() const
+    {
+        return this->fitness;
+    }
+
+    bool getChanges() const
+    {
+        return this->hasChanges;
+    }
+
+    vector<int> getClusters() const
+    {
+        return this->clusters;
+    }
+
+    int getClusterSize() const
+    {
+        return this->clusters.size();
+    }
+
+    int getClusterCount( int arg_index ) const
+    {
+        return this->clusters[arg_index];
+    }
+
+    // Setters
+    void initGenes(int arg_geneSize)
+    {
+        this->genes.clear();
+        this->genes.resize(arg_geneSize);
+    }
+
+    void initClusters(int arg_clusterSize)
+    {
+        this->clusters.clear();
+        this->clusters.resize(arg_clusterSize);
+    }
+
+    void setGenes(vector<int> arg_genes)
+    {
+        this->genes.clear();
+        this->genes = arg_genes;
+    }
+
+    void setFitness(float arg_fitness)
+    {
+        this->fitness = arg_fitness;
+    }
+
+    void setChanges(bool arg_hasChanges)
+    {
+        this->hasChanges = arg_hasChanges;
+    }
+
+    void setClusters(vector<int> arg_clusters)
+    {
+        this->clusters.clear();
+        this->clusters = arg_clusters;
+    }
+
+    void changeClusterCount(int arg_cluster, int arg_count)
+    {
+        this->clusters[arg_cluster] += arg_count;
+    }
+
+    void changeGene(int arg_index, int arg_cluster)
+    {
+        this->fitness= -1;
+        this->hasChanges = true;
+
+        this->clusters[arg_cluster]++;
+        this->clusters[ this->genes[arg_index] ]--;
+
+        this->genes[arg_index] = arg_cluster;
+    }
+
+
+    // Auxiliar Functions
+    void printContents() const
+    {
+        cout<<"---/Cromosome/---"<<endl;
+        cout<<"\tGenes:  [";
+        for (int i = 0; i < genes.size(); i++)
+        {
+            cout<<"i="<<i<<" ["<<genes[i]<<"] ";
+        }
+        cout<<"]"<<endl;
+
+        cout<<"\tFitness: "<<fitness<<endl;
+        cout<<"\tHas changes? "<<hasChanges<<endl;
+        cout<<"\tCluster count: [";
+
+        for (int i = 0; i < clusters.size(); i++)
+        {
+            cout<<"i="<<i<<" ["<<clusters[i]<<"] ";
+        }
+        cout<<"]"<<endl;
+        cout<<"---/Cromosome End/---"<<endl;
+    }
+
+    void printGenes() const
+    {
+        cout<<"Genes: [ ";
+        for (int i = 0; i < genes.size(); i++)
+        {
+           cout<<"["<<i<<"]="<<genes[i]<<"\t";
+        }
+        cout<<"]"<<endl;
+        
+    }
+
+    void printClusters() const
+    {
+        cout<<"Clusters: [ ";
+        for (int i = 0; i < clusters.size(); i++)
+        {
+           cout<<"["<<i<<"]="<<clusters[i]<<"\t";
+        }
+        cout<<"]"<<endl;
+    }
+
+};
+
+struct bestCromosome
+{
+    int pos;
+    float fitness;
+    bool isAlive;
+    cromosome data;
+};
+
+
+/**
+ * @brief Small container for the restrictions
+ * @param   x_0     ith Row in the Restriction Matrix
+ * @param   x_1     jth Row in the Restriction Matrix
+ * @param   R       The kind of restriction held 
+ */
+struct triplet
+{
+    int x_0;
+    int x_1;
+    int R;
+};
+
+// FUNCTIONS
+
+/**
+ * @brief Parse and fill the matrices with the supplied data.
+ * @param dataSetPath               Path that leads to a *.set file.
+ * @param dataSetRestrictiosPath    Path that leads to a *.const file.
+ * @param X                         Matrix that will be filled with n instances of d dimensions.
+ * @param MR                        Matrxi that will be filled with n * n instances with their restrictions.
+ */
+void loadData(string dataSetPath, string dataSetRestrictionsPath, vector<vector<float>> &X, vector<vector<int>> &MR)
+{
+    ifstream dataSetFile (dataSetPath);
+    ifstream dataSetRestrictions (dataSetRestrictionsPath);
+    string line, item;
+
+    if(dataSetFile.is_open())
+    {
+        int i=0, j=0;
+        while(getline(dataSetFile, line, '\n'))
+        {
+            stringstream aux(line);
+            while (getline(aux, item, ','))
+            {
+                X[i][j] = stof(item);
+                j++;
+            }
+            i++;
+            j=0;
+        }
+    }
+    else
+    {
+        cout<<"Error: "<<dataSetPath<<" is not a valid file."<<endl;
+        exit(-1);
+    }
+
+    if(dataSetRestrictions.is_open())
+    {
+        int i=0, j=0;
+        while(getline(dataSetRestrictions, line, '\n'))
+        {
+            stringstream aux(line);
+            while (getline(aux, item, ','))
+            {
+                MR[i][j] = stof(item);
+                j++;
+            }
+            i++;
+            j=0;
+        }
+    }
+    else
+    {
+        cout<<"Error: "<<dataSetRestrictionsPath<<" is not a valid file."<<endl;
+        exit(-1);
+    }
+}
+
+/**
+ * @brief Fill a list containing all the restrictions in the form of (x_i, x_j, R), also one with only MUST LINK and CANNOT LINK restrictions.
+ * @param n     Number of instances.
+ * @param MR    Restriction matrix.
+ * @param LR    Vector of Triplets to be filled.
+ * @param ML    Vector of MUST LINK Triplets to be filled. 
+ * @param CL    Vector of CANNOT LINK Triplets to be filled.
+ */
+void fillTriplet(int n, vector<vector<int>> MR, vector<triplet> &LR, vector<triplet> &ML, vector<triplet> &CL)
+{
+    for (int i = 0; i < n; i++)
+    {
+        for (int j = i; j < n; j++)
+        {
+            if(i != j && MR[i][j] != 0)
+            {
+                triplet aux = {i, j, MR[i][j]};
+                LR.push_back(aux);
+                if(MR[i][j] == 1)
+                {
+                    ML.push_back(aux);
+                }
+
+                if(MR[i][j] == -1)
+                {
+                    CL.push_back(aux);
+                }
+            }
+        }
+    }
+}
+
+/**
+ * @brief Generate the lambda component of the fitness calculation.
+ * @param n     Number of instances.
+ * @param dim   Number of dimenions.
+ * @param X     List of instances with their d dimensions.
+ * @param rSize Total number of restrictions.
+ * @return Lambda, calculated as D, the largest distance in the current dataset divided by the number of restrictions.
+ */
+double genLambda(int n, int dim, vector<vector<float>> X, int rSize)
+{
+    double maxDist = -1;
+    double actDist;
+
+    /*
+     * Lambda = D / |R|
+     *  - D is the largest distance between two points.
+     *  - |R| is the number of restrictions.
+     */
+
+    // Calculating maxDist 
+    for (int i = 0; i < n; i++)
+    {
+        for(int j = i; j < n; j++)
+        {
+
+            if(i != j)
+            {
+                actDist = 0;
+                for(int k = 0; k < dim; k++)
+                {
+                    actDist += pow(X[i][k] - X[j][k], 2);
+                }
+
+                actDist = sqrt(actDist);
+
+                if(actDist > maxDist)
+                {
+                    maxDist = actDist;
+                }
+            }
+        }
+    }
+
+    maxDist = ceil(maxDist);
+
+    return maxDist / (double) rSize;
+    
+}
+
+/**
+ * @brief Random Wrapper for the RNG Library to be used in the Random Shuffle function
+ * @param i     Index that is used for Random Shuffle to generate a number. 
+ * @return Random integer between 0 and i
+ */
+int rWrapper(int i)
+{
+    return (Randint(0, i))%i;
+}
+
+/**
+ * @brief Calculates the infeasibility of the current solution.
+ * @param S     Vector of the current solution.
+ * @param ML    Vector of MUST-LINK Triplets.
+ * @param CL    Vector of CANNOT-LINK Triplets.
+ * @return  The count of how many times a restrictions has been violated.
+ */
+int infeasibility(vector<int> S, vector<triplet> ML, vector<triplet> CL)
+{
+    int count = 0;
+    int mlSize = ML.size(),
+        clSize = CL.size();
+
+    // Checking MUST-LINK restrictions.
+    for(int i = 0; i < mlSize; i++)
+    {
+        // If x_0 and x_1 belong to different clusters, ML is violated.
+        if(S[ML[i].x_0] != S[ML[i].x_1])
+        {
+            count++;
+        }
+    }
+
+    // Checking CANNOT-LINK restrictions.
+    for(int i = 0; i < clSize; i++)
+    {
+        // If x_0 and x_1 belong to the same cluster, CL is violated.
+        if(S[CL[i].x_0] == S[CL[i].x_1])
+        {
+            count++;
+        }
+
+    }
+    return count;
+}
+
+/**
+ * @brief Calculate the instances associated with a centroid given the current solution.
+ * @param actInst   The vecto f actual instances associated with the centroid to be filled.
+ * @param X         Array that contains n instances with their d dimensions. 
+ * @param actK      The current centroid/cluster
+ * @param S         Vector that contains the actual solution
+ */
+void calcInstances(vector<int> &actInst, vector<vector<float>> X, int actK, vector<int> S)
+{
+    vector<int> actList;
+    int size = S.size();
+
+    for (int i = 0; i < size; i++)
+    {
+        if(S[i] == actK)
+        {
+            actInst.push_back(i);
+        }
+    }
+}
+
+/**
+ * @brief Calculate the coordinates of a centroid given the list of instances associated with it.
+ * @param actCoord  The centroid coordinates to be calculated.
+ * @param actInst   The actual instances associated with the centroid.
+ * @param X         Array that contains n instances with their d dimensions. 
+ */
+void calcCentroidCoords(vector<float> &actCoord, vector<int> &actInst, vector<vector<float>> X)
+{
+    int dimensions = X[0].size();
+    int instances = actInst.size();
+
+    float sum;
+    
+    for (int i = 0; i < dimensions; i++)
+    {
+        sum = 0;
+
+        for(int j = 0; j < instances; j++)
+        {
+            sum += X[actInst[j]][i];
+        }
+
+        actCoord[i] = sum / instances;
+    }
+}
+
+/**
+ * @brief Get the average intracluster distance of a certain cluster.
+ * @param actCoord  The actual centroid coordinates.
+ * @param actInst   The actual instances associated with the centroid.
+ * @param X         Array that contains n instances with their d dimensions. 
+ * @return Average intracluster distane of a certain cluster.
+ */
+double calcIntraDiff(vector<float> actCoord, vector<int> actInst, vector<vector<float>> X)
+{
+    double sum = 0;
+    double actDist;
+
+    int dimensions = X[0].size();
+    int instances = actInst.size();
+
+    for(int i = 0; i < instances; i++)
+    {
+        actDist = 0;
+        for(int j = 0; j < dimensions; j++)
+        {
+            actDist += pow(X[actInst[i]][j] - actCoord[j], 2);
+        }
+        actDist = sqrt(actDist);
+        sum += actDist;
+    }
+
+    return sum / instances;
+}
+
+/**
+ * @brief Get the average intracluster distance of the current solution.
+ * @param S         Vector that contains the actual solution
+ * @param X         Array that contains n instances with their d dimensions. 
+ * @param k         Number of Centroids.
+ * @return Average intracluster distance of the current solution.
+ */
+double intraClusterDistance(vector<int> S, vector<vector<float>> X, int k)
+{
+    vector<int> actInstance;
+    vector<float> actCoords (X[0].size(), 0);
+    double  actDiff,
+            totalDiff = 0;
+
+    for (int i = 0; i < k; i++)
+    {
+        actInstance.clear();
+        calcInstances(actInstance, X, i, S);
+        calcCentroidCoords(actCoords, actInstance, X);
+        actDiff = calcIntraDiff(actCoords, actInstance, X);
+        totalDiff += actDiff;
+    }
+    return totalDiff / k;
+}
+
+/**
+ * @brief Get the fitness of the solution
+ * @param S         Vector that contains the a solution
+ * @param X         Array that contains n instances with their d dimensions.
+ * @param ML        Vector of MUST-LINK triplets.
+ * @param CL        Vector of CANNOT-LINK triplets.
+ * @param lambda    Value to be used for computing the fitness value.
+ * @param k         Number of Centroids.
+ * @return Value of the fitness obtained  
+ */
+double getFitness(const vector<int> &S, const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, double lambda, int k)
+{
+    float iCD, infeas;
+    
+    iCD = intraClusterDistance(S, X, k);
+    infeas = (lambda * infeasibility(S, ML, CL));
+
+    return  iCD+infeas;
+}
+
+void generateInitialPop(vector<cromosome> &pop, int k)
+{
+    vector<int> auxGenes, auxClusters;
+    auxGenes.resize(pop[0].getGeneSize());
+    auxClusters.resize(k);
+
+    for (int i = 0; i < pop.size(); i++)
+    {
+
+        for (int j = 0; j < k; j++)
+        {
+            auxClusters[j] = 0;
+
+            auxGenes[j] = j;
+            auxClusters[j]++;
+        }
+
+        for(int j = k; j < pop[0].getGeneSize(); j++)
+        {
+            auxGenes[j] = (Randint(0, k))%k;
+            auxClusters[auxGenes[j]]++;
+        }
+
+        random_shuffle(auxGenes.begin(), auxGenes.end(), rWrapper);
+        
+        pop[i].setGenes(auxGenes);
+        pop[i].setClusters(auxClusters);
+    }
+}
+
+
+int evaluatePopSta(vector<cromosome> &pop, const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, double lambda, int k, bestCromosome &bestCrom, vector<pair<int, float>> &worstTwoCroms)
+{
+    int internalEvaluations = 0,
+        firstCrom = -1,
+        secondCrom = -1;
+
+    bool foundFirstWorst = false, 
+         foundSecondWorst = false;
+
+    float firstEval = -1,
+          secondEval = -1;
+
+    bestCrom.pos = -1;
+    bestCrom.fitness = numeric_limits<float>::max();
+
+    for (int i = 0; i < pop.size(); i++)
+    {
+        if (pop[i].getChanges())
+        {
+            pop[i].setFitness( getFitness(pop[i].getGenes(), X, ML, CL, lambda, k) );
+            pop[i].setChanges(false);
+            internalEvaluations++;
+        }
+
+        if (firstEval < pop[i].getFitness())
+        {
+            if (secondEval <= firstEval)
+            {
+                firstEval = secondEval;
+                firstCrom = secondCrom;
+
+                secondCrom = i;
+                secondEval = pop[i].getFitness();
+            }
+            else
+            {
+                firstCrom = i;
+                firstEval = pop[i].getFitness();
+            }   
+        }
+
+        if(pop[i].getFitness() < bestCrom.fitness)
+        {
+            bestCrom.pos = i;
+            bestCrom.fitness = pop[i].getFitness();
+        }
+
+    }
+
+    bestCrom.data = pop[ bestCrom.pos ];
+
+    worstTwoCroms[0].first = secondCrom;
+    worstTwoCroms[0].second = secondEval;
+
+    worstTwoCroms[1].first = firstCrom;
+    worstTwoCroms[1].second = firstEval;
+
+    return internalEvaluations;
+}
+
+void popSelectionSta(const vector<cromosome> pop, vector<cromosome> &parentPop)
+{
+    int fighterA,
+        fighterB,
+        popSize = pop.size();
+
+    for (int i = 0; i < parentPop.size(); i++)
+    {
+        fighterA = (Randint(0, popSize)%popSize);
+        fighterB = (Randint(0, popSize)%popSize);
+
+
+        if(pop[fighterA].getFitness() < pop[fighterB].getFitness())
+        {
+            parentPop[i] = pop[fighterA];
+        }
+        else
+        {
+            parentPop[i] = pop[fighterB];
+        }
+    }
+}
+
+vector<cromosome> popCrossUniformSta(const vector<cromosome> &parentPop)
+{
+    vector<int> childA, clustA, 
+                childB, clustB;
+
+    vector<cromosome> childPop = parentPop;
+
+    int crossNum = (int)ceil(parentPop.size() * stationaryCrossChance),
+        geneChanges = (int)(parentPop[0].getGeneSize() / 2),
+        geneSize = parentPop[0].getGeneSize(),
+        crossA = 0,
+        crossB = 0;
+
+    for (int i = 0; i < crossNum; i += 2)
+    {
+        childA = parentPop[i].getGenes();
+        clustA = parentPop[i].getClusters();
+
+        childB = parentPop[i+1].getGenes();
+        clustB = parentPop[i+1].getClusters();
+
+        for (int j = 0; j < geneChanges; j++)
+        {    
+            do
+            {
+                crossA = (Randint(0, geneSize))%geneSize;
+            }while(clustA[ childA[crossA] ] == 1);
+            do
+            {
+                crossB = (Randint(0, geneSize))%geneSize;
+            }while(clustB[ childB[crossB] ] == 1);
+
+            clustA[ childA[crossA] ]--;
+            clustA[ parentPop[i+1].getGeneCluster(crossA) ]++;
+
+            clustB[ childB[crossB] ]--;
+            clustB[ parentPop[i].getGeneCluster(crossB) ]++;
+
+            childA[crossA] = parentPop[i+1].getGeneCluster(crossA);
+            childB[crossB] = parentPop[i].getGeneCluster(crossB);
+        }
+
+        childPop[i].setGenes(childA);
+        childPop[i].setChanges(true);
+        childPop[i].setClusters(clustA);
+        childPop[i].setFitness(-1);
+
+        childPop[i+1].setGenes(childB);
+        childPop[i+1].setChanges(true);
+        childPop[i+1].setClusters(clustB);
+        childPop[i+1].setFitness(-1);
+    }
+
+    return childPop;
+}
+
+vector<cromosome> popCrossFixedSegSta(const vector<cromosome> &parentPop)
+{
+    vector<int> childA, clustA, 
+                childB, clustB;
+
+    vector<cromosome> childPop = parentPop;
+
+    int crossNum = (int)ceil(parentPop.size() * stationaryCrossChance),
+        geneSize = parentPop[0].getGeneSize(),
+        segStart,
+        segLen,
+        crossA,
+        crossB;
+     
+    for (int i = 0; i < crossNum; i += 2)
+    {
+        childA = parentPop[i].getGenes();
+        clustA = parentPop[i].getClusters();
+
+        childB = parentPop[i+1].getGenes();
+        clustB = parentPop[i+1].getClusters();
+
+        segLen = ( Randint(0, geneSize) )%geneSize;
+        segStart = ( Randint(0, geneSize) )%geneSize;
+
+        for (int j = 0; j < segLen; j++)
+        {
+            crossA = Randint(0, geneSize)%2;
+            crossB = Randint(0, geneSize)%2;
+
+            if(crossA && clustA[ childA[ (j + segStart)%geneSize ] ] > 1)
+            {
+                clustA[ childA[ (j + segStart)%geneSize ] ]--;
+                clustA[ parentPop[i+1].getGeneCluster( (j + segStart)%geneSize ) ]++;
+
+                childA[ (j + segStart)%geneSize ] = parentPop[i+1].getGeneCluster( ( (j + segStart)%geneSize ) );
+            }
+
+            if(crossB && clustB[ childB[ (j + segStart)%geneSize ] ] > 1)
+            {
+                clustB[ childB[ (j + segStart)%geneSize ] ]--;
+                clustB[ parentPop[i].getGeneCluster( (j + segStart)%geneSize ) ]++;
+
+                childB[ (j + segStart)%geneSize ] = parentPop[i].getGeneCluster( ( (j + segStart)%geneSize ) );
+            }
+
+        }
+
+        childPop[i].setGenes(childA);
+        childPop[i].setChanges(true);
+        childPop[i].setClusters(clustA);
+        childPop[i].setFitness(-1);
+
+        childPop[i+1].setGenes(childB);
+        childPop[i+1].setChanges(true);
+        childPop[i+1].setClusters(clustB);
+        childPop[i+1].setFitness(-1);
+    }
+
+    return childPop;
+}
+
+void popMutationSta(vector<cromosome> &parentPop)
+{
+    int clusterSize = parentPop[0].getClusterSize() - 1,
+        geneSize = parentPop[0].getGeneSize(),
+        mutationPos,
+        tVirus;
+    
+    for (int i = 0; i < parentPop.size(); i++)
+    {
+        
+        if (fmod(Rand()+0.1, 1) > (1-mutationChance))
+        {
+            do
+            {
+                mutationPos = (Randint(0, geneSize))%geneSize;
+            }while(parentPop[i].getClusterCount( parentPop[i].getGeneCluster(mutationPos) ) == 1 );
+
+            do
+            {
+                tVirus = (Randint(0, clusterSize))%clusterSize;
+            }while(parentPop[i].getGeneCluster(mutationPos) == tVirus);
+
+            parentPop[i].changeGene(mutationPos, tVirus);
+        }
+    }
+    
+}
+
+/**
+ * @brief Auxiliar function that sorts the list with the pair that has the lowest fitness
+ * @param a     First object to be compared.
+ * @param b     Second object to be compared.
+ * @returns TRUE if a has lower fitness than b, FALSE otherwise.
+ */
+bool compareFitness(const pair<int, float> &a, const pair<int, float> &b)
+{
+    return a.second < b.second;
+}
+
+void replacePopSta(vector<cromosome> &childPop, vector<cromosome> parentPop, const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, double lambda, int k, vector<pair<int, float>> worstTwoCroms)
+{
+    list<pair<int, float>> genPop;
+    pair<int, float> child1, child2;
+
+    genPop.push_back(worstTwoCroms[0]);
+    genPop.push_back(worstTwoCroms[1]);
+
+    parentPop[0].setFitness( getFitness(parentPop[0].getGenes(), X, ML, CL, lambda, k) );
+    parentPop[0].setChanges(false);
+
+    parentPop[1].setFitness( getFitness(parentPop[1].getGenes(), X, ML, CL, lambda, k) );
+    parentPop[1].setChanges(false);
+
+    genPop.push_back( pair<int, float>(-1, parentPop[0].getFitness()) );
+    genPop.push_back( pair<int, float>(-2, parentPop[1].getFitness()) );
+
+    genPop.sort(compareFitness);
+
+    child1 = genPop.front();
+    genPop.pop_front();
+
+    child2 = genPop.front();
+
+    if (child1.first < 0)
+    {
+        childPop[ worstTwoCroms[1].first ] = parentPop[ abs(child1.first)-1 ]; 
+    }
+
+    if (child2.first < 0)
+    {
+        childPop[ worstTwoCroms[0].first ] = parentPop[ abs(child2.first)-1 ];
+    }
+}
+
+int BLS(cromosome &S, int clusters, int maxFailures, const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, double lambda)
+{
+    bool hasImproved;
+
+    int numFailures, 
+        internalEvals = 0,
+        newGene,
+        newCluster;
+
+    float actualFitness,
+          newFitness;
+
+    vector<int> RSI;
+        RSI.resize(S.getGeneSize());
+        for(int i = 0; i < S.getGeneSize(); i++) RSI[i] = i;
+
+    cromosome actS;
+    numFailures = 0;
+    hasImproved = true;
+
+    random_shuffle(RSI.begin(), RSI.end(), rWrapper);
+
+    actualFitness = getFitness(S.getGenes(), X, ML, CL, lambda, clusters);
+
+    for (int j = 0; j < S.getGeneSize(); j++)
+    {
+
+        if (numFailures > maxFailures && !hasImproved)
+        {
+            break;
+        }
+
+        hasImproved = false;
+
+        for (int k = 0; k < clusters; k++)
+        {
+            actS = S;
+
+            if(k != actS.getGeneCluster(RSI[j]) && actS.getClusterCount( actS.getGeneCluster(RSI[j]) ) > 1)
+            {
+                actS.changeGene(RSI[j], k);
+                newFitness = getFitness(actS.getGenes(), X, ML, CL, lambda, clusters);
+
+                internalEvals++;
+
+                if (newFitness < actualFitness)
+                {
+                    actualFitness = newFitness;
+                    newGene = RSI[j];
+                    newCluster = k;
+                    hasImproved = true;
+                }
+            }
+        }
+
+        if (!hasImproved)
+        {
+            numFailures++;
+        }
+        else
+        {
+            S.changeGene(newGene, newCluster);
+            S.setFitness(actualFitness);
+            S.setChanges(true);
+        }
+    }
+    return internalEvals;
+}
+
+bool bestCroms(const pair<int, cromosome> &a, const pair<int, cromosome> &b)
+{
+    return a.second.getFitness() < b.second.getFitness();
+}
+
+vector<int> AM(const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, int k, double lambda, int popSize, int blGeneration, float popSizePercentage, bool selectBest)
+{
+    int evaluations = 0,
+        generations = 1,
+        numFailures = (int)floor(0.1 * X.size());
+
+    vector<cromosome> population, parentPop, childPop;
+        population.resize(popSize);
+        for(int i = 0; i < popSize; i++) 
+        {
+            population[i].initGenes(X.size());
+            population[i].initClusters(k);
+            population[i].setFitness(-1);
+            population[i].setChanges(true);
+        }
+        parentPop.resize(2);
+
+    bestCromosome bestCrom;
+
+    vector<pair<int, float>> worstTwoCroms;
+        worstTwoCroms.resize(2);
+
+    generateInitialPop(population, k);
+    evaluatePopSta(population, X, ML, CL, lambda, k, bestCrom, worstTwoCroms);
+
+    while(evaluations < 100000)
+    {
+        popSelectionSta(population, parentPop);
+
+        childPop = popCrossFixedSegSta(parentPop);
+
+        popMutationSta(childPop);
+
+        replacePopSta(population, childPop, X, ML, CL, lambda, k, worstTwoCroms);
+
+        if (generations == blGeneration)
+        {
+            generations = 0;
+            if (!selectBest)
+            {
+                for (int i = 0; i < (int)ceil(popSizePercentage * popSize); i++)
+                {
+                    evaluations += BLS(population[i], k, numFailures, X, ML, CL, lambda);
+                }
+            }
+            else
+            {
+                pair<int, cromosome> auxGene;
+                list<pair<int, cromosome>> topBestCroms;
+
+                for (int i = 0; i < popSize; i++)
+                {
+                    auxGene.first = i;
+                    auxGene.second = population[i];
+                    topBestCroms.push_back(auxGene);
+                }
+
+                topBestCroms.sort(bestCroms);
+
+                for (int i = 0; i < (int)ceil(popSizePercentage * popSize); i++)
+                {
+                    auxGene = topBestCroms.front();
+                    topBestCroms.pop_front();
+
+                    evaluations += BLS(auxGene.second, k, numFailures, X, ML, CL, lambda);
+
+                    if (auxGene.second.getChanges())
+                    {
+                        population[auxGene.first] = auxGene.second;
+                        population[auxGene.first].setChanges(false);
+                    }
+                    
+                }
+                
+            }
+            
+        }
+        
+        evaluatePopSta(population, X, ML, CL, lambda, k, bestCrom, worstTwoCroms);
+        evaluations += 2;
+        generations++;
+   }
+    
+    return bestCrom.data.getGenes();
+}
+
+
+/**
+ * @brief Print relevant information about a function.
+ * @param   hint        A text string to be printed along with the data.
+ * @param   S           Vector containing the resulting clustering.
+ * @param   X           Matrix contaning n data with d dimensions.
+ * @param   ML          Vector of MUST-LINK triplets.
+ * @param   CL          Vector of CANNOT-LINK triplets.
+ * @param   numClusters Number of clusters.
+ * @param   lambda      Lambda value calculated.
+ * @param   time        Time that takes to execute the function.
+ * @param   seed        The seed used in the execution.
+ */
+void output(string hint, vector<int> S, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int numClusters, double lambda, double time, int seed)
+{
+
+    double intraClusterDist = intraClusterDistance(S, X, numClusters);
+    int infeas = infeasibility(S, ML, CL);
+    double fitness = intraClusterDist + (lambda * infeas);
+
+    cout<<hint<<"\t"<<infeas <<"\t"<<intraClusterDist<<"\t"<<fitness<<"\t"<<time<<"\t"<<seed<<endl;
+}
+
+/**
+ * @brief Main function
+ * @param n             Number of instances
+ * @param d             Number of dimensions
+ * @param k             Number of clusters
+ * @param setPath       Path to the '*.dat' file
+ * @param constPath     Path to the '*.const' file
+ * @param randomSeed    Intenger to be used as the seed for the RNG
+ * @return Execution status
+ */
+int main(int argc, char * argv[])
+{
+    if(argc != 7)
+    {
+        cout<<"\nThis program needs 6 parameters, it received "<<argc-1<<"."<<endl;
+        cout<<"\nUsage: ./BL_exe n d k setPath constPath randomSeed"<<endl;
+        cout<<"n            Number of instances."<<endl;
+        cout<<"d            Dimensions of instances."<<endl;
+        cout<<"k            Number of clusters."<<endl;
+        cout<<"setPath      Path to the '*.dat' file"<<endl;
+        cout<<"constPath    Path to the '*.const' file"<<endl;
+        cout<<"randomSeed   Intenger to be used as the seed for the RNG"<<endl;
+        exit(-1);
+    }
+
+    //  Declare the "stopwatch"
+    clock_t timeBefore, timeAfter;
+
+    // Getting data from input
+    int numberInstances = stoi(argv[1]),
+        dimensions = stoi(argv[2]),
+        numClusters = stoi(argv[3]),
+        populationSize = 50;
+
+    string setPath = argv[4],
+            constPath = argv[5];
+
+    // Defining main data structures
+    vector<vector<float>> X;
+        X.resize(numberInstances);
+        for(int i = 0; i < numberInstances; i++) X[i].resize(dimensions);
+
+    vector<vector<int>> MR;
+        MR.resize(numberInstances);
+        for(int i=0; i<numberInstances;i++) MR[i].resize(numberInstances);
+
+    vector<triplet> LR;
+    vector<triplet> ML, CL;
+
+    // Reading the files and filling up the data structures.
+    loadData(setPath, constPath, X, MR);
+    fillTriplet(numberInstances, MR, LR, ML, CL);
+
+    // Generate the Lambda Constant.
+    double lambda = genLambda(numberInstances, dimensions, X, LR.size());
+
+    // Evaluate the algorithms
+    
+    // Initializing the seed
+    Set_random(stoi(argv[6]));
+    timeBefore = clock();
+    vector<int> AM_10_1 = AM(X, ML, CL, numClusters, lambda, populationSize, 10, 1, false);
+    timeAfter = clock();
+    
+    output("AM_10_1", AM_10_1, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, stoi(argv[6]));
+
+    Set_random(stoi(argv[6]));
+    timeBefore = clock();
+    vector<int> AM_1_1 = AM(X, ML, CL, numClusters, lambda, populationSize, 10, 0.1, false);
+    timeAfter = clock();
+
+    output("AM_1_1", AM_1_1, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, stoi(argv[6]));
+
+    Set_random(stoi(argv[6]));
+    timeBefore = clock();
+    vector<int> AM_1_1best = AM(X, ML, CL, numClusters, lambda, populationSize, 10, 0.1, true);
+    timeAfter = clock();
+
+    output("AM_1_1best", AM_1_1best, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, stoi(argv[6]));
+
+    return 0;
+}

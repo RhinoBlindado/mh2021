@@ -1,0 +1,13 @@
+345 5 16 ../BIN/input/bupa_set.dat ../BIN/input/bupa_set_const_10.const 860681 
+345 5 16 ../BIN/input/bupa_set.dat ../BIN/input/bupa_set_const_20.const 860681 
+
+
+214 9 7 ../BIN/input/glass_set.dat ../BIN/input/glass_set_const_10.const 860681 
+214 9 7 ../BIN/input/glass_set.dat ../BIN/input/glass_set_const_20.const 860681 
+
+
+101 16 7 ../BIN/input/zoo_set.dat ../BIN/input/zoo_set_const_10.const 860681 
+101 16 7 ../BIN/input/zoo_set.dat ../BIN/input/zoo_set_const_20.const 860681 
+
+
+8 2 2 ../BIN/input/test_set.dat ../BIN/input/test_set_const_x.const 860681 

@@ -6,7 +6,7 @@
  * Practica 2.b - Técnicas de Búsqueda basadas en Poblaciones para el Problema del Agrupamiento con Restricciones
  * Asignatura: Metaheuristicas
  * Autor: Valentino Lugli (Github: @RhinoBlindado)
- * Abril, Mayo 2021
+ * Fecha: Abril, Mayo 2021
  */
 
 /**
@@ -15,7 +15,7 @@
  * Practice 2.b - Population-based search techniques for the Clustering Problem with Restrictions
  * Course: Metaheuristics
  * Author: Valentino Lugli (Github: @RhinoBlindado)
- * April, May 2021
+ * Fecha: April, May 2021
  */
 
 // LIBRARIES
@@ -39,13 +39,15 @@
 #include <utility>
 //  Randomness.
 #include "libs/random.h"
+//  List.
+#include <list>
 
 using namespace std;
 
 //  GLOBAL VARS
-const float uniformCrossChance = 0.7,
-            fixedSegCrossChance = 1,
-            mutationChance = 0.001;
+const float generationalCrossChance = 0.7,
+            stationaryCrossChance = 1,
+            mutationChance = 0.1;
 
 class cromosome
 {
@@ -173,7 +175,7 @@ class cromosome
 
 
     // Auxiliar Functions
-    void printContents()
+    void printContents() const
     {
         cout<<"---/Cromosome/---"<<endl;
         cout<<"\tGenes:  [";
@@ -195,7 +197,7 @@ class cromosome
         cout<<"---/Cromosome End/---"<<endl;
     }
 
-    void printGenes()
+    void printGenes() const
     {
         cout<<"Genes: [ ";
         for (int i = 0; i < genes.size(); i++)
@@ -206,7 +208,7 @@ class cromosome
         
     }
 
-    void printClusters()
+    void printClusters() const
     {
         cout<<"Clusters: [ ";
         for (int i = 0; i < clusters.size(); i++)
@@ -225,7 +227,6 @@ struct bestCromosome
     bool isAlive;
     cromosome data;
 };
-
 
 /**
  * @brief Small container for the restrictions
@@ -401,7 +402,6 @@ int infeasibility(vector<int> S, vector<triplet> ML, vector<triplet> CL)
     int count = 0;
     int mlSize = ML.size(),
         clSize = CL.size();
-//    cout<<"Infeas begin..."<<endl;
 
     // Checking MUST-LINK restrictions.
     for(int i = 0; i < mlSize; i++)
@@ -423,7 +423,6 @@ int infeasibility(vector<int> S, vector<triplet> ML, vector<triplet> CL)
         }
 
     }
-//    cout<<"Infeas done..."<<endl;
     return count;
 }
 
@@ -446,7 +445,6 @@ void calcInstances(vector<int> &actInst, vector<vector<float>> X, int actK, vect
             actInst.push_back(i);
         }
     }
-
 }
 
 /**
@@ -473,7 +471,6 @@ void calcCentroidCoords(vector<float> &actCoord, vector<int> &actInst, vector<ve
 
         actCoord[i] = sum / instances;
     }
-
 }
 
 /**
@@ -514,7 +511,6 @@ double calcIntraDiff(vector<float> actCoord, vector<int> actInst, vector<vector<
  */
 double intraClusterDistance(vector<int> S, vector<vector<float>> X, int k)
 {
-//     cout<<"Intracluster begin..."<<endl;
     vector<int> actInstance;
     vector<float> actCoords (X[0].size(), 0);
     double  actDiff,
@@ -528,7 +524,6 @@ double intraClusterDistance(vector<int> S, vector<vector<float>> X, int k)
         actDiff = calcIntraDiff(actCoords, actInstance, X);
         totalDiff += actDiff;
     }
-//    cout<<"Intracluster done..."<<endl;
     return totalDiff / k;
 }
 
@@ -542,7 +537,7 @@ double intraClusterDistance(vector<int> S, vector<vector<float>> X, int k)
  * @param k         Number of Centroids.
  * @return Value of the fitness obtained  
  */
-double getFitness(vector<int> S, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, double lambda, int k)
+double getFitness(const vector<int> &S, const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, double lambda, int k)
 {
     float iCD, infeas;
     
@@ -582,7 +577,7 @@ void generateInitialPop(vector<cromosome> &pop, int k)
     }
 }
 
-int evaluatePop(vector<cromosome> &pop, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, double lambda, int k, bestCromosome &bestCrom)
+int evaluatePopGen(vector<cromosome> &pop, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, double lambda, int k, bestCromosome &bestCrom)
 {
     int internalEvaluations = 0;
     bestCrom.pos = -1;
@@ -611,7 +606,7 @@ int evaluatePop(vector<cromosome> &pop, vector<vector<float>> X, vector<triplet>
     return internalEvaluations;
 }
 
-void popSelection(const vector<cromosome> pop, vector<cromosome> &parentPop, bestCromosome &bestCrom)
+void popSelectionGen(const vector<cromosome> &pop, vector<cromosome> &parentPop, bestCromosome &bestCrom)
 {
     int fighterA,
         fighterB,
@@ -649,14 +644,14 @@ void popSelection(const vector<cromosome> pop, vector<cromosome> &parentPop, bes
     }
 }
 
-vector<cromosome> popCrossUniform(const vector<cromosome> parentPop, bestCromosome &bestCrom)
+vector<cromosome> popCrossUniformGen(const vector<cromosome> &parentPop, bestCromosome &bestCrom)
 {
     vector<int> childA, clustA, 
                 childB, clustB;
 
     vector<cromosome> childPop = parentPop;
 
-    int crossNum = (int)ceil(parentPop.size() * uniformCrossChance),
+    int crossNum = (int)ceil(parentPop.size() * generationalCrossChance),
         geneChanges = (int)(parentPop[0].getGeneSize() / 2),
         geneSize = parentPop[0].getGeneSize(),
         crossA = 0,
@@ -666,7 +661,6 @@ vector<cromosome> popCrossUniform(const vector<cromosome> parentPop, bestCromoso
     {
         bestCrom.isAlive = false;
     }
-
 
     for (int i = 0; i < crossNum; i += 2)
     {
@@ -711,14 +705,14 @@ vector<cromosome> popCrossUniform(const vector<cromosome> parentPop, bestCromoso
     return childPop;
 }
 
-vector<cromosome> popCrossFixedSeg(const vector<cromosome> parentPop, bestCromosome &bestCrom)
+vector<cromosome> popCrossFixedSegGen(const vector<cromosome> &parentPop, bestCromosome &bestCrom)
 {
     vector<int> childA, clustA, 
                 childB, clustB;
 
     vector<cromosome> childPop = parentPop;
 
-    int crossNum = (int)ceil(parentPop.size() * fixedSegCrossChance),
+    int crossNum = (int)ceil(parentPop.size() * generationalCrossChance),
         geneSize = parentPop[0].getGeneSize(),
         segStart,
         segLen,
@@ -732,7 +726,6 @@ vector<cromosome> popCrossFixedSeg(const vector<cromosome> parentPop, bestCromos
     
     for (int i = 0; i < crossNum; i += 2)
     {
-
         childA = parentPop[i].getGenes();
         clustA = parentPop[i].getClusters();
 
@@ -760,7 +753,7 @@ vector<cromosome> popCrossFixedSeg(const vector<cromosome> parentPop, bestCromos
                 clustB[ childB[ (j + segStart)%geneSize ] ]--;
                 clustB[ parentPop[i].getGeneCluster( (j + segStart)%geneSize ) ]++;
 
-                childA[ (j + segStart)%geneSize ] = parentPop[i].getGeneCluster( ( (j + segStart)%geneSize ) );
+                childB[ (j + segStart)%geneSize ] = parentPop[i].getGeneCluster( ( (j + segStart)%geneSize ) );
             }
 
         }
@@ -774,14 +767,15 @@ vector<cromosome> popCrossFixedSeg(const vector<cromosome> parentPop, bestCromos
         childPop[i+1].setChanges(true);
         childPop[i+1].setClusters(clustB);
         childPop[i+1].setFitness(-1);
+
     }
 
     return childPop;
 }
 
-void popMutation(vector<cromosome> &parentPop, bestCromosome bestCrom)
+void popMutationGen(vector<cromosome> &parentPop, bestCromosome bestCrom)
 {
-    int mutatedCroms = (int)ceil(mutationChance * parentPop.size() * parentPop[0].getGeneSize()),
+    int mutatedCroms = (int)ceil((mutationChance / parentPop[0].getGeneSize()) * parentPop.size() * parentPop[0].getGeneSize()),
         wesker = (Randint(0, (parentPop.size() - mutatedCroms - 1)))%parentPop.size(),
         clusterSize = parentPop[0].getClusterSize() - 1,
         geneSize = parentPop[0].getGeneSize(),
@@ -803,7 +797,7 @@ void popMutation(vector<cromosome> &parentPop, bestCromosome bestCrom)
 
         do
         {
-            tVirus = (Randint(0, clusterSize))%geneSize;
+            tVirus = (Randint(0, clusterSize))%clusterSize;
         }while(parentPop[i + wesker].getGeneCluster(mutationPos) == tVirus);
 
         parentPop[i + wesker].changeGene(mutationPos, tVirus);
@@ -811,7 +805,7 @@ void popMutation(vector<cromosome> &parentPop, bestCromosome bestCrom)
     
 }
 
-void replacePop(vector<cromosome> &childPop, vector<cromosome> parentPop, bestCromosome bestCrom)
+void replacePopGen(vector<cromosome> &childPop, vector<cromosome> parentPop, bestCromosome bestCrom)
 {
 
     for (int i = 0; i < parentPop.size(); i++)
@@ -833,9 +827,8 @@ void replacePop(vector<cromosome> &childPop, vector<cromosome> parentPop, bestCr
  * @param CL        Vector of CANNOT-LINK triplets.
  * @param k         Number of Centroids.    
  */
-vector<int> AGG(vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int k, double lambda, int popSize, bool useUniformOperator)
+vector<int> AGG(const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, int k, double lambda, int popSize, bool useUniformOperator)
 {
-  //  cout<<"Function start"<<endl;
     int evaluations = 0;
 
     vector<cromosome> population, parentPop, childPop;
@@ -851,115 +844,398 @@ vector<int> AGG(vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL,
     }
 
     bestCromosome bestCrom;
- //   cout<<"Get init pop"<<endl;
     generateInitialPop(population, k);
- //       cout<<"popeval"<<endl;
 
-    evaluatePop(population, X, ML, CL, lambda, k, bestCrom);
-   // cout<<"Loop start"<<endl;
+    evaluatePopGen(population, X, ML, CL, lambda, k, bestCrom);
     while(evaluations < 100000)
     {
-        cout<<"EVAL: "<<evaluations;
-    //    cout<<"INITAL POP"<<endl;
-      /*  for (int i = 0; i < population.size(); i++)
-        {
-            cout<<"["<<i<<"]";
-            population[i].printContents();
-        }
-       cout<<"best="<<bestCrom.pos<<" Fitness="<<bestCrom.fitness<<endl;
-*/
-        popSelection(population, parentPop, bestCrom);
-
-     //  cout<<" SELECTION "<<endl;
-     /*   for (int i = 0; i < population.size(); i++)
-        {
-            cout<<"["<<i<<"]";
-            parentPop[i].printContents();
-        }
-        cout<<"best="<<bestCrom.pos<<" Fitness="<<bestCrom.fitness<<endl;
-*/
+        popSelectionGen(population, parentPop, bestCrom);
 
         if(useUniformOperator)
         {
-           childPop = popCrossUniform(parentPop, bestCrom);
+           childPop = popCrossUniformGen(parentPop, bestCrom);
         }
         else
         {
-            childPop = popCrossFixedSeg(parentPop, bestCrom);
+            childPop = popCrossFixedSegGen(parentPop, bestCrom);
         }
 
+        popMutationGen(childPop, bestCrom);
 
-     //   cout<<" CROSS "<<endl;
-      /*  for (int i = 0; i < population.size(); i++)
-        {
-            cout<<"["<<i<<"]";
-            childPop[i].printContents();
-        }
-        cout<<"best="<<bestCrom.pos<<" Fitness="<<bestCrom.fitness<<endl;
-
-*/
-        popMutation(childPop, bestCrom);
-
-      //  cout<<" MUTATION "<<endl;
-    /*    for (int i = 0; i < population.size(); i++)
-        {
-            cout<<"["<<i<<"]";
-            childPop[i].printContents();
-        }
-        cout<<"best="<<bestCrom.pos<<" Fitness="<<bestCrom.fitness<<endl;
-*/
-
-        replacePop(population, childPop, bestCrom);
-
-       // cout<<" REPLACED "<<endl;
-     /*   for (int i = 0; i < population.size(); i++)
-        {
-            cout<<"["<<i<<"]";
-            population[i].printContents();
-        }
-*/
-        evaluations += evaluatePop(population, X, ML, CL, lambda, k, bestCrom);
-
-        //cout<<"best="<<bestCrom.pos;
-        cout<<" FIT: "<<bestCrom.fitness<<endl;
+        replacePopGen(population, childPop, bestCrom);
+        evaluations += evaluatePopGen(population, X, ML, CL, lambda, k, bestCrom);
    }
     return bestCrom.data.getGenes();
 
 }
 
-/*        cout<<"OG POP:"<<endl;
-        for (int i = 0; i < population.size(); i++)
+
+int evaluatePopSta(vector<cromosome> &pop, const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, double lambda, int k, bestCromosome &bestCrom, vector<pair<int, float>> &worstTwoCroms)
+{
+    int internalEvaluations = 0,
+        firstCrom = -1,
+        secondCrom = -1;
+
+    bool foundFirstWorst = false, 
+         foundSecondWorst = false;
+
+    float firstEval = -1,
+          secondEval = -1;
+
+    bestCrom.pos = -1;
+    bestCrom.fitness = numeric_limits<float>::max();
+
+    for (int i = 0; i < pop.size(); i++)
+    {
+        if (pop[i].getChanges())
         {
-            for (int j = 0; j < population[0].genes.size(); j++)
-            {
-                cout<<population[i].genes[j]<<" ";
-            }
-            cout<<endl;
-            
+            pop[i].setFitness( getFitness(pop[i].getGenes(), X, ML, CL, lambda, k) );
+            pop[i].setChanges(false);
+            internalEvaluations++;
         }
-*/
+
+        if (firstEval < pop[i].getFitness())
+        {
+            if (secondEval <= firstEval)
+            {
+                firstEval = secondEval;
+                firstCrom = secondCrom;
+
+                secondCrom = i;
+                secondEval = pop[i].getFitness();
+            }
+            else
+            {
+                firstCrom = i;
+                firstEval = pop[i].getFitness();
+            }   
+        }
+
+        if(pop[i].getFitness() < bestCrom.fitness)
+        {
+            bestCrom.pos = i;
+            bestCrom.fitness = pop[i].getFitness();
+        }
+
+    }
+
+    bestCrom.data = pop[ bestCrom.pos ];
+
+    worstTwoCroms[0].first = secondCrom;
+    worstTwoCroms[0].second = secondEval;
+
+    worstTwoCroms[1].first = firstCrom;
+    worstTwoCroms[1].second = firstEval;
+
+    return internalEvaluations;
+}
+
+void popSelectionSta(const vector<cromosome> pop, vector<cromosome> &parentPop)
+{
+    int fighterA,
+        fighterB,
+        popSize = pop.size();
+
+    for (int i = 0; i < parentPop.size(); i++)
+    {
+        fighterA = (Randint(0, popSize)%popSize);
+        fighterB = (Randint(0, popSize)%popSize);
+
+
+        if(pop[fighterA].getFitness() < pop[fighterB].getFitness())
+        {
+            parentPop[i] = pop[fighterA];
+        }
+        else
+        {
+            parentPop[i] = pop[fighterB];
+        }
+    }
+}
+
+vector<cromosome> popCrossUniformSta(const vector<cromosome> &parentPop)
+{
+    vector<int> childA, clustA, 
+                childB, clustB;
+
+    vector<cromosome> childPop = parentPop;
+
+    int crossNum = (int)ceil(parentPop.size() * stationaryCrossChance),
+        geneChanges = (int)(parentPop[0].getGeneSize() / 2),
+        geneSize = parentPop[0].getGeneSize(),
+        crossA = 0,
+        crossB = 0;
+
+    for (int i = 0; i < crossNum; i += 2)
+    {
+        childA = parentPop[i].getGenes();
+        clustA = parentPop[i].getClusters();
+
+        childB = parentPop[i+1].getGenes();
+        clustB = parentPop[i+1].getClusters();
+
+        for (int j = 0; j < geneChanges; j++)
+        {    
+            do
+            {
+                crossA = (Randint(0, geneSize))%geneSize;
+            }while(clustA[ childA[crossA] ] == 1);
+            do
+            {
+                crossB = (Randint(0, geneSize))%geneSize;
+            }while(clustB[ childB[crossB] ] == 1);
+
+            clustA[ childA[crossA] ]--;
+            clustA[ parentPop[i+1].getGeneCluster(crossA) ]++;
+
+            clustB[ childB[crossB] ]--;
+            clustB[ parentPop[i].getGeneCluster(crossB) ]++;
+
+            childA[crossA] = parentPop[i+1].getGeneCluster(crossA);
+            childB[crossB] = parentPop[i].getGeneCluster(crossB);
+        }
+
+        childPop[i].setGenes(childA);
+        childPop[i].setChanges(true);
+        childPop[i].setClusters(clustA);
+        childPop[i].setFitness(-1);
+
+        childPop[i+1].setGenes(childB);
+        childPop[i+1].setChanges(true);
+        childPop[i+1].setClusters(clustB);
+        childPop[i+1].setFitness(-1);
+    }
+
+    return childPop;
+}
+
+vector<cromosome> popCrossFixedSegSta(const vector<cromosome> &parentPop)
+{
+    vector<int> childA, clustA, 
+                childB, clustB;
+
+    vector<cromosome> childPop = parentPop;
+
+    int crossNum = (int)ceil(parentPop.size() * stationaryCrossChance),
+        geneSize = parentPop[0].getGeneSize(),
+        segStart,
+        segLen,
+        crossA,
+        crossB;
+     
+    for (int i = 0; i < crossNum; i += 2)
+    {
+        childA = parentPop[i].getGenes();
+        clustA = parentPop[i].getClusters();
+
+        childB = parentPop[i+1].getGenes();
+        clustB = parentPop[i+1].getClusters();
+
+        segLen = ( Randint(0, geneSize) )%geneSize;
+        segStart = ( Randint(0, geneSize) )%geneSize;
+
+        for (int j = 0; j < segLen; j++)
+        {
+            crossA = Randint(0, geneSize)%2;
+            crossB = Randint(0, geneSize)%2;
+
+            if(crossA && clustA[ childA[ (j + segStart)%geneSize ] ] > 1)
+            {
+                clustA[ childA[ (j + segStart)%geneSize ] ]--;
+                clustA[ parentPop[i+1].getGeneCluster( (j + segStart)%geneSize ) ]++;
+
+                childA[ (j + segStart)%geneSize ] = parentPop[i+1].getGeneCluster( ( (j + segStart)%geneSize ) );
+            }
+
+            if(crossB && clustB[ childB[ (j + segStart)%geneSize ] ] > 1)
+            {
+                clustB[ childB[ (j + segStart)%geneSize ] ]--;
+                clustB[ parentPop[i].getGeneCluster( (j + segStart)%geneSize ) ]++;
+
+                childB[ (j + segStart)%geneSize ] = parentPop[i].getGeneCluster( ( (j + segStart)%geneSize ) );
+            }
+
+        }
+
+        childPop[i].setGenes(childA);
+        childPop[i].setChanges(true);
+        childPop[i].setClusters(clustA);
+        childPop[i].setFitness(-1);
+
+        childPop[i+1].setGenes(childB);
+        childPop[i+1].setChanges(true);
+        childPop[i+1].setClusters(clustB);
+        childPop[i+1].setFitness(-1);
+    }
+
+    return childPop;
+}
+
+void popMutationSta(vector<cromosome> &parentPop)
+{
+    int clusterSize = parentPop[0].getClusterSize() - 1,
+        geneSize = parentPop[0].getGeneSize(),
+        mutationPos,
+        tVirus;
+    
+    for (int i = 0; i < parentPop.size(); i++)
+    {
+        
+        if (fmod(Rand()+0.1, 1) > (1-mutationChance))
+        {
+            do
+            {
+                mutationPos = (Randint(0, geneSize))%geneSize;
+            }while(parentPop[i].getClusterCount( parentPop[i].getGeneCluster(mutationPos) ) == 1 );
+
+            do
+            {
+                tVirus = (Randint(0, clusterSize))%clusterSize;
+            }while(parentPop[i].getGeneCluster(mutationPos) == tVirus);
+
+            parentPop[i].changeGene(mutationPos, tVirus);
+        }
+    }
+    
+}
 
 /**
- * @brief 
+ * @brief Auxiliar function that sorts the list with the pair that has the lowest fitness
+ * @param a     First object to be compared.
+ * @param b     Second object to be compared.
+ * @returns TRUE if a has lower fitness than b, FALSE otherwise.
+ */
+bool compareFitness(const pair<int, float> &a, const pair<int, float> &b)
+{
+    return a.second < b.second;
+}
+
+/**
+ * @brief Replacement Operator for the AGE
+ * @param childPop  Vector of Cromosomes of the Child Population
+ * @param parentPop Vector of Cromosomes of the Parent Population
  * @param X         Array that contains n instances with their d dimensions.
  * @param ML        Vector of MUST-LINK triplets.
  * @param CL        Vector of CANNOT-LINK triplets.
- * @param k         Number of Centroids.    
+ * @param k         Number of Centroids.  
+ * @param lambda    Lambda value.           
+ * @param worstTwoCroms Vector of pairs that cointains the two worst cromosomes of the generation.
  */
-void AGE(vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int k, double lambda, bool useUniformOperator)
+void replacePopSta(vector<cromosome> &childPop, vector<cromosome> parentPop, const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, double lambda, int k, vector<pair<int, float>> worstTwoCroms)
 {
-       
+    list<pair<int, float>> genPop;
+    pair<int, float> child1, child2;
+
+    genPop.push_back(worstTwoCroms[0]);
+    genPop.push_back(worstTwoCroms[1]);
+
+    parentPop[0].setFitness( getFitness(parentPop[0].getGenes(), X, ML, CL, lambda, k) );
+    parentPop[0].setChanges(false);
+
+    parentPop[1].setFitness( getFitness(parentPop[1].getGenes(), X, ML, CL, lambda, k) );
+    parentPop[1].setChanges(false);
+
+    genPop.push_back( pair<int, float>(-1, parentPop[0].getFitness()) );
+    genPop.push_back( pair<int, float>(-2, parentPop[1].getFitness()) );
+
+    genPop.sort(compareFitness);
+
+    child1 = genPop.front();
+    genPop.pop_front();
+
+    child2 = genPop.front();
+
+    if (child1.first < 0)
+    {
+        childPop[ worstTwoCroms[1].first ] = parentPop[ abs(child1.first)-1 ]; 
+    }
+
+    if (child2.first < 0)
+    {
+        childPop[ worstTwoCroms[0].first ] = parentPop[ abs(child2.first)-1 ];
+    }
 }
 
+
+/**
+ * @brief           Genetic Algorithm with Stationary Population
+ * @param X         Array that contains n instances with their d dimensions.
+ * @param ML        Vector of MUST-LINK triplets.
+ * @param CL        Vector of CANNOT-LINK triplets.
+ * @param k         Number of Centroids.  
+ * @param lambda    Lambda value
+ * @param popSize   Size of Population
+ * @param useUniformOperator    If TRUE, the Uniform Operator will be used, otherwise the Fixed Segment one will be used.  
+ */
+vector<int> AGE(const vector<vector<float>> &X, const vector<triplet> &ML, const vector<triplet> &CL, int k, double lambda, int popSize, bool useUniformOperator)
+{
+    int evaluations = 0;
+
+    vector<cromosome> population, parentPop, childPop;
+        population.resize(popSize);
+        for(int i = 0; i < popSize; i++) 
+        {
+            population[i].initGenes(X.size());
+            population[i].initClusters(k);
+            population[i].setFitness(-1);
+            population[i].setChanges(true);
+        }
+        parentPop.resize(2);
+
+    bestCromosome bestCrom;
+
+    vector<pair<int, float>> worstTwoCroms;
+        worstTwoCroms.resize(2);
+
+    generateInitialPop(population, k);
+    evaluatePopSta(population, X, ML, CL, lambda, k, bestCrom, worstTwoCroms);
+
+    while(evaluations < 100000)
+    {
+        popSelectionSta(population, parentPop);
+
+        if(useUniformOperator)
+        {
+           childPop = popCrossUniformSta(parentPop);
+        }
+        else
+        {
+            childPop = popCrossFixedSegSta(parentPop);
+        }
+
+        popMutationSta(childPop);
+
+        replacePopSta(population, childPop, X, ML, CL, lambda, k, worstTwoCroms);
+
+        evaluatePopSta(population, X, ML, CL, lambda, k, bestCrom, worstTwoCroms);
+
+        evaluations += 2;
+   }
+    
+    return bestCrom.data.getGenes();
+}
+
+/**
+ * @brief Print relevant information about a function.
+ * @param   hint        A text string to be printed along with the data.
+ * @param   S           Vector containing the resulting clustering.
+ * @param   X           Matrix contaning n data with d dimensions.
+ * @param   ML          Vector of MUST-LINK triplets.
+ * @param   CL          Vector of CANNOT-LINK triplets.
+ * @param   numClusters Number of clusters.
+ * @param   lambda      Lambda value calculated.
+ * @param   time        Time that takes to execute the function.
+ * @param   seed        The seed used in the execution.
+ */
 void output(string hint, vector<int> S, vector<vector<float>> X, vector<triplet> ML, vector<triplet> CL, int numClusters, double lambda, double time, int seed)
 {
 
     double intraClusterDist = intraClusterDistance(S, X, numClusters);
     int infeas = infeasibility(S, ML, CL);
     double fitness = intraClusterDist + (lambda * infeas);
-
+    
     cout<<hint<<"\t"<<infeas <<"\t"<<intraClusterDist<<"\t"<<fitness<<"\t"<<time<<"\t"<<seed<<endl;
-
+    
 }
 
 /**
@@ -999,10 +1275,6 @@ int main(int argc, char * argv[])
     string setPath = argv[4],
             constPath = argv[5];
 
-    // Initializing the seed
-    Set_random(stoi(argv[6]));
-
-
     // Defining main data structures
     vector<vector<float>> X;
         X.resize(numberInstances);
@@ -1022,31 +1294,36 @@ int main(int argc, char * argv[])
     // Generate the Lambda Constant.
     double lambda = genLambda(numberInstances, dimensions, X, LR.size());
 
-
-    // ANALYSIS VARS
-
-
+    // Evaluate the algorithms
     
-    /**
-     *      GENETIC ALGORITHMS
-     * 
-     */
+    // Initializing the seed
+    Set_random(stoi(argv[6]));
     timeBefore = clock();
     vector<int> AGG_UN = AGG(X, ML, CL, numClusters, lambda, populationSize, true);
     timeAfter = clock();
-    
+
     output("AGG_UN", AGG_UN, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, stoi(argv[6]));
 
+    Set_random(stoi(argv[6]));
     timeBefore = clock();
     vector<int> AGG_SF = AGG(X, ML, CL, numClusters, lambda, populationSize, false);
     timeAfter = clock();
 
-    output("AGG_SF", AGG_SF, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, -1);
+    output("AGG_SF", AGG_SF, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, stoi(argv[6]));
 
+    Set_random(stoi(argv[6]));
+    timeBefore = clock();
+    vector<int> AGE_UN = AGE(X, ML, CL, numClusters, lambda, populationSize, true);
+    timeAfter = clock();
 
+    output("AGE_UN", AGE_UN, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, stoi(argv[6]));
 
-    // Print the data
+    Set_random(stoi(argv[6]));
+    timeBefore = clock();
+    vector<int> AGE_SF = AGE(X, ML, CL, numClusters, lambda, populationSize, false);
+    timeAfter = clock();
 
+    output("AGE_SF", AGE_SF, X, ML, CL, numClusters, lambda, (double)(timeAfter-timeBefore) / CLOCKS_PER_SEC, stoi(argv[6]));
 
     return 0;
 }

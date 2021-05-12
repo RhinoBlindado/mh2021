@@ -1,6 +1,6 @@
 INC = -I ./libs/
 
-all: GENE_exe #MEME_exe
+all: GENE_exe MEME_exe
 
 GENE_exe : GENE.o random.o 
 	g++ -std=c++17 $(INC) -g -o $@ $^
