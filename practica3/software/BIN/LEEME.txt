@@ -1,7 +1,8 @@
 /*** ARCHIVOS ***/
-input               - Contiene los datos del problema, es decir, los ficheros *.set y *.const
-output              - Contiene los datos de salida, esto es solo requerido si se hace uso del script gatherData.sh
-GENE_exe            - Programa ejecutable que implementa los Algoritmos Genéticos
-MEME_exe            - Programa ejecutable que implementa los Algoritmos Meméticos
-gatherData_P2.sh    - Script utilizado para realizar las ejecuciones requeridas, los resultados los almacenan en output
-seeds.txt           - Fichero que contiene las semillas utilizadas
+input            - Contiene los datos del problema, es decir, los ficheros *.set y *.const
+output           - Contiene los datos de salida, esto es solo requerido si se hace uso del script gatherData.sh
+ES_exe           - Programa ejecutable que implementa el algoritmo de Enfriamiento Simulado.
+BMB_exe          - Programa ejecutable que implementa el algoritmo de Búsqueda Multiarranque Básica.
+ILS_exe          - Programa ejecutable que implementa los algoritmos ILS e ILS-ES.
+gatherData_P3.sh - Script utilizado para realizar las ejecuciones requeridas, los resultados los almacenan en output
+seeds.txt        - Fichero que contiene las semillas utilizadas

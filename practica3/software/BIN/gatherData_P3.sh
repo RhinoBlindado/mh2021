@@ -2,7 +2,6 @@
 
 # [CASTELLANO]
 # Función: Realiza las ejecuciones de los algoritmos y almacenar los datos de salida.
-# Practica 3.b - Técnicas de Búsqueda basadas en Poblaciones para el Problema del Agrupamiento con Restricciones
 # Asignatura: Metaheuristicas
 # Autor: Valentino Lugli (Github: @RhinoBlindado)
 # Mayo, Junio 2021
@@ -11,7 +10,6 @@
 # 
 # [ENGLISH]
 # Function: Execute all the algorithms and save the outputs.
-# Practice 3.b - Population-based search techniques for the Clustering Problem with Restrictions
 # Course: Metaheuristics
 # Author: Valentino Lugli (Github: @RhinoBlindado)
 # May, June 2021
@@ -21,7 +19,7 @@
 dataName=("ZOO" "GLASS" "BUPA")
 
 # Algos
-algorithm=("ES")
+algorithm=("ES" "BMB" "ILS")
 
 # Variables
 instances=(101 214 345)

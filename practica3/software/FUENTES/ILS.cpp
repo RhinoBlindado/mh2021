@@ -558,7 +558,7 @@ vector<int> mutateSolution(const vector<int> &S, int k)
             newS[(i + s) % m] = newCluster;
         }
     }
-
+    
     return newS;
 }
 
@@ -659,7 +659,7 @@ vector<int> ES_Modded(vector<int> S, const vector<vector<float>> &X, const vecto
     int instances = X.size(),
         countNeighbors,
         countSucesses,
-        maxNeighbors = 10 * X.size(),
+        maxNeighbors = 6 * X.size(),
         maxSucesses = 0.1 * maxNeighbors,
         iterations = 0,
         maxIterations = (int)ceil(10000 / maxNeighbors);
@@ -672,7 +672,7 @@ vector<int> ES_Modded(vector<int> S, const vector<vector<float>> &X, const vecto
            fitDiff,
            initialTemp,
            actTemp,
-           finalTemp = 0.001,
+           finalTemp = 0.00001,
            rando;
 
     vector<int> /*S(instances, -1),*/

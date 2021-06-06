@@ -430,7 +430,7 @@ vector<int> ES(const vector<vector<float>> &X, const vector<triplet> &ML, const 
     int instances = X.size(),
         countNeighbors,
         countSucesses,
-        maxNeighbors = 10 * X.size(),
+        maxNeighbors = 6 * X.size(),
         maxSucesses = 0.1 * maxNeighbors,
         iterations = 0,
         maxIterations = (int)ceil(100000 / maxNeighbors);
@@ -443,7 +443,7 @@ vector<int> ES(const vector<vector<float>> &X, const vector<triplet> &ML, const 
            fitDiff,
            initialTemp,
            actTemp,
-           finalTemp = 0.001;
+           finalTemp = 0.00001;
 
     vector<int> S(instances, -1),
                 neighbor,
@@ -468,7 +468,6 @@ vector<int> ES(const vector<vector<float>> &X, const vector<triplet> &ML, const 
     }
 
     beta = (initialTemp - finalTemp) / (maxIterations * initialTemp * finalTemp);
-
     /* Main Loop */
     do
     {
@@ -501,8 +500,6 @@ vector<int> ES(const vector<vector<float>> &X, const vector<triplet> &ML, const 
             }
 
         } while (countNeighbors < maxNeighbors && countSucesses < maxSucesses);
-        cout << iterations << " " << bestSolution.fitness << " " << countNeighbors << " " << countSucesses << endl;
-
         // Cooldown
         actTemp = actTemp / (1 + beta * actTemp);
         //actTemp = 0.95 * actTemp;
